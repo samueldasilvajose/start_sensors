@@ -21,13 +21,13 @@ ss_body_context_free(SsBodyContext **ctx)
 }
 
 
-void
+int
 ss_set_power_theme(SsBodyContext *ctx, int theme, const char *msg)
 {
     SsTheme *t = &ctx->body[theme];
-    if (theme == ctx->current_theme)
+    if ((SsThemeType) theme == ctx->current_theme)
     {
-        return;
+        return 1;
     }
 
     t->label._first_style = ctx->body[ctx->current_theme].label.style;
@@ -36,21 +36,38 @@ ss_set_power_theme(SsBodyContext *ctx, int theme, const char *msg)
     ss_apply_theme(t);
     gtk_label_set_text(GTK_LABEL(t->label.widget), msg);
     ctx->current_theme = theme;
+
+    return 0;
 }
 
 
 static void
 poweron_sensors(GtkWidget *button, gpointer data)
 {
-    ss_set_power_theme(data, SS_THEME_POWERON, "Sensores ligados!");
-    ss_poweron_sensors();
+    (void) button;
+
+    SsBodyContext *ctx = data;
+    if (SS_THEME_POWERON == ctx->current_theme || ss_poweron_sensors() != 0)
+    {
+        return;
+    }
+
     ss_check_ips();
+    ss_set_power_theme(data, SS_THEME_POWERON, "Sensores ligados!");
 }
 
 
 static void
 poweroff_sensors(GtkWidget *button, gpointer data)
 {
+    (void) button;
+    
+    SsBodyContext *ctx = data;
+    if (SS_THEME_POWEROFF == ctx->current_theme)
+    {
+        return;
+    }
+
     ss_set_power_theme(data, SS_THEME_POWEROFF, "Sensores desligados!");
     ss_poweroff_sensors();
     ss_check_ips_encerrer();

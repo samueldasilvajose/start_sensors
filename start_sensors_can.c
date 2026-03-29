@@ -6,10 +6,16 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#ifndef __USE_MISC
+#define __USE_MISC
 #include <net/if.h>
+#undef __USE_MISC
+#else
+#include <net/if.h>
+#endif
+
 #include <linux/can/raw.h>
 #include "start_sensors_can.h"
-
 
 
 static ss_error_mask_t level_to_notify = SS_ERROR_CRITICAL_MASK;
@@ -83,8 +89,8 @@ ss_recv_frame(int sockfd, struct can_frame *frame)
 int
 ss_send_frame(int sockfd, struct can_frame *frame)
 {
-	size_t frame_size = sizeof(*frame);
 	ssize_t ret;
+	ssize_t frame_size = (ssize_t) sizeof(*frame);
 
 	errno = 0;
 	while ((ret = send(sockfd, frame, sizeof(*frame), 0)) != frame_size)

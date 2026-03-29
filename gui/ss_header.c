@@ -4,6 +4,9 @@
 #include "ss_header.h"
 #include "ss_controller.h"
 
+//adicionando configs
+//#include "ss_header_settings.h"
+
 
 SsHeaderContext *
 ss_header_context_new()
@@ -26,6 +29,8 @@ ss_header_context_free(SsHeaderContext **ctx)
 void
 ss_define_item_in_stack(SsController *ctl, gpointer data, gpointer user_data)
 {
+    (void) ctl;
+
     SsStackComponentsType type = *((SsStackComponentsType *) data);
     SsStackContext *ctx = (SsStackContext *) user_data;
     gtk_stack_set_visible_child_name(GTK_STACK(ctx->stack), ctx->components[type].label);
@@ -45,6 +50,8 @@ hide_notification(gpointer data)
 void
 ss_show_notify(SsController *ctl, gpointer data, gpointer user_data)
 {
+    (void) ctl;
+
     SsNotifyMsg *noti = (SsNotifyMsg *) data;
     SsNotificationContext *ctx = (SsNotificationContext *) user_data;
 
@@ -69,6 +76,8 @@ ss_show_notify(SsController *ctl, gpointer data, gpointer user_data)
 void
 ss_write_notification_viewer(SsController *ctl, gpointer data, gpointer user_data)
 {
+    (void) ctl;
+
     SsNotifyMsg *noti = (SsNotifyMsg *) data;
     SsHistoryNotifyContext *ctx = (SsHistoryNotifyContext *) user_data;
 
@@ -105,6 +114,8 @@ create_notification_widget(SsNotificationContext *notify_ctx)
 static void
 toggle_viewer_notification(GtkButton *button, gpointer data)
 {
+    (void) button;
+
     SsHistoryNotifyContext *popover = (SsHistoryNotifyContext *) data;
     if (gtk_widget_get_visible(popover->popover))
     {
@@ -119,7 +130,7 @@ toggle_viewer_notification(GtkButton *button, gpointer data)
 }
 
 
-static GtkWidget *
+static void
 create_viewer_notification(GtkWidget *button, SsHistoryNotifyContext *popover_ctx, const SsGeometryWindow *geo_win)
 {
     popover_ctx->popover = gtk_popover_new(button);
@@ -197,14 +208,24 @@ ss_create_header(SsHeaderContext **header_ctx, SsMainWindowContext *win_ctx)
     g_signal_connect (win_ctx->controller, ss_singnal_to_string(SS_SIGNAL_UPDATE_BACKEND_STACK),
         G_CALLBACK(ss_define_item_in_stack), &(*header_ctx)->stack);
 
+    //adicionando configs
+    //GtkWidget *button_config = gtk_button_new_from_icon_name("preferences-system", GTK_ICON_SIZE_BUTTON);
+    //gtk_widget_set_tooltip_text(button_config, "Configurações");
+    //gtk_box_pack_start(GTK_BOX((*header_ctx)->header), button_config, FALSE, FALSE, 0);
+
     GtkWidget *button_info = gtk_button_new_from_icon_name("dialog-information", GTK_ICON_SIZE_BUTTON);
     gtk_widget_set_tooltip_text(button_info, "Historico de notificações");
-    gtk_box_pack_start(GTK_BOX((*header_ctx)->header), button_info, FALSE, FALSE, 10);
+    gtk_box_pack_start(GTK_BOX((*header_ctx)->header), button_info, FALSE, FALSE, 0);
 
     SsHistoryNotifyContext *popover_ctx = &(*header_ctx)->history_notify;
     create_viewer_notification(button_info, popover_ctx, &win_ctx->geo);
     g_signal_connect (win_ctx->controller, ss_singnal_to_string(SS_SIGNAL_UPDATE_BACKEND_NOTIFICATION),
-                G_CALLBACK(ss_write_notification_viewer),  &(*header_ctx)->history_notify);
+                G_CALLBACK(ss_write_notification_viewer),  popover_ctx);
+
+    //definir borda
+    GtkWidget *empty_area = gtk_drawing_area_new();
+    gtk_widget_set_size_request(empty_area, 10, 10);  // largura x altura
+    gtk_box_pack_start(GTK_BOX((*header_ctx)->header), empty_area, FALSE, FALSE, 0);
 
     create_notification_widget(&(*header_ctx)->notification);
     g_signal_connect (win_ctx->controller, ss_singnal_to_string(SS_SIGNAL_UPDATE_BACKEND_NOTIFICATION),

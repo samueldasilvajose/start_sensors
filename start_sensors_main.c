@@ -45,7 +45,7 @@ read_parameters(int argc, char **argv)
     if (!file_config)
     {
         size_t nbyte = (START_SENSORS_STR_LITERAL_LEN(config_path_default) + 1) * sizeof(char);
-        start_sensors_copy_data(&file_config, config_path_default, nbyte);
+        start_sensors_copy_data((void **) &file_config, config_path_default, nbyte);
     }
 }
 

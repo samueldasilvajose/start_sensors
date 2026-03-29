@@ -19,7 +19,7 @@ static void ss_controller_class_init(SsControllerClass *klass);
 G_DEFINE_TYPE(SsController, ss_controller, G_TYPE_OBJECT)
 
 // Inicialização da instância
-static void ss_controller_init(SsController *self) { }
+static void ss_controller_init(SsController *self) { (void) self; }
 
 // Inicialização da classe: registrar sinais
 static void ss_controller_class_init(SsControllerClass *klass)
@@ -49,6 +49,8 @@ ss_controller_new()
 inline void
 _ss_controller_close_app(SsController *self, gpointer data)
 {
+    (void) data;
+    
     g_signal_emit(self, signals[SS_SIGNAL_UPDATE_BACKEND_CLOSE_APPLICATION], 0, NULL);
 }
 

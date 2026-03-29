@@ -17,8 +17,8 @@ typedef enum
 
 typedef struct _SsBodyContext
 {
-    SsThemeType current_theme;
     SsTheme body[SS_THEME_COUNT];
+    SsThemeType current_theme;
 } SsBodyContext;
 
 SsBodyContext *ss_body_context_new();
@@ -26,6 +26,6 @@ void ss_body_context_free(SsBodyContext **ctx);
 
 void ss_create_body(SsBodyContext **body_ctx, SsMainWindowContext *win_ctx);
 void ss_create_footer(SsBodyContext *body_ctx, SsMainWindowContext *win_ctx);
-void ss_set_power_theme(SsBodyContext *ctx, int theme, const char *msg);
+int ss_set_power_theme(SsBodyContext *ctx, int theme, const char *msg);
 
 #endif // SS_FOOTER_H

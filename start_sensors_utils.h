@@ -17,11 +17,12 @@ typedef enum
     INT = 1,
     LONG,
     IHEXA,
+    LHEXA,
     DOUBLE
 } convert_type_t;
 
 
-int start_sensors_copy_data(void **dst, void *src, size_t nbytes);
+int start_sensors_copy_data(void **dst, const void *src, size_t nbytes);
 int start_sensors_convert_str_to_num(void *, const char *, convert_type_t);
 size_t extra_keys_read_file(char **buf, const char *file_name);
 

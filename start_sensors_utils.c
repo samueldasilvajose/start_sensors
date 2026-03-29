@@ -9,7 +9,7 @@
 
 
 int
-start_sensors_copy_data(void **dst, void *src, size_t nbytes)
+start_sensors_copy_data(void **dst, const void *src, size_t nbytes)
 {
     if (*dst || !src || (nbytes == SIZE_MAX))
     {
@@ -131,6 +131,24 @@ start_sensors_convert_str_to_num(void *ptr, const char *num_str, convert_type_t 
 
             //converted value
             long val = strtol(num_str, &end_num_str, 10); //converte string em long int
+
+            if (errno == ERANGE) //checks if the number exceeded the type limits
+            {
+                err = -1;
+            }
+            else
+            {
+                *(long*) ptr = val; //saves the value found
+            }
+
+            break;
+        }
+        case LHEXA:
+        {
+            errno = 0; //clean errors
+
+            //converted value
+            long val = strtol(num_str, &end_num_str, 16); //converte string em long int
 
             if (errno == ERANGE) //checks if the number exceeded the type limits
             {

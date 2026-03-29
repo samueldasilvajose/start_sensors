@@ -11,25 +11,25 @@ static SsController *ss_controller = NULL;
 
 
 // ================== frontend -> backend ================== //
-inline void
+int
 ss_poweron_sensors()
 {
-    start_sensores_exec_poweron();
+    return start_sensores_exec_poweron();
 }
 
 
-inline void
+int
 ss_poweroff_sensors()
 {
     ss_send_stack_msg(SS_STACK_COMPONENTS_EMPTY);
-    start_sensores_exec_poweroff();
+    return start_sensores_exec_poweroff();
 }
 
 
-inline void
+int
 ss_read_state_sensors()
 {
-    start_sensores_exec_read_state();
+    return start_sensores_exec_read_state();
 }
 
 
@@ -91,7 +91,7 @@ ss_check_ips()
 
 // ================== backend -> frontend ================== //
 
-inline int
+int
 ss_start(int argc, char **argv)
 {
     return (ss_rum_app(argc, argv));

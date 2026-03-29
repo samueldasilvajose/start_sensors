@@ -33,7 +33,7 @@ start_sensores_salve_log(SsNotifyMsg *noti)
 
     char buf_time[64];
     strftime(buf_time, sizeof(buf_time), "%d-%m-%Y_%H-%M-%S", info);
-    fprintf(file_a, "%s [%s]: %d %s\n", ss_error_to_string(noti->err), buf_time, noti->err, noti->msg);
+    fprintf(file_a, "[%s] %s: %d %s\n", buf_time, ss_error_to_string(noti->err), noti->err, noti->msg);
 
     fclose(file_a);
 }
@@ -81,7 +81,7 @@ start_sensores_init_can()
 }
 
 
-void
+int
 start_sensores_exec_poweron()
 {
     start_sensors_can_data_t *ptr = &global_configs.power[SS_POWER_ON];
@@ -90,7 +90,7 @@ start_sensores_exec_poweron()
        ptr->sockfd = ss_connect_can(ptr->can_interface);
        if (ptr->sockfd < 0)
        {
-            return;
+            return -1;
        }
     }
     
@@ -98,11 +98,15 @@ start_sensores_exec_poweron()
     {
         ss_send_frame(ptr->sockfd, &ptr->msg);
         power_state = 1;
+
+        return 0;
     }
+
+    return 1;
 }
 
 
-void
+int
 start_sensores_exec_poweroff()
 {
     start_sensors_can_data_t *ptr = &global_configs.power[SS_POWER_OFF];
@@ -111,7 +115,7 @@ start_sensores_exec_poweroff()
         ptr->sockfd = ss_connect_can(ptr->can_interface);
         if (ptr->sockfd < 0)
         {
-            return;
+            return -1;
         }
     }
     
@@ -119,7 +123,31 @@ start_sensores_exec_poweroff()
     {
         ss_send_frame(ptr->sockfd, &ptr->msg);
         power_state = 0;
+
+        return 0;
     }
+
+    return 1;
+}
+
+
+int
+start_sensores_exec_read_state()
+{
+    start_sensors_can_data_t *ptr = &global_configs.power[SS_READ_STATE];
+    if (ptr->sockfd < 0)
+    {
+        ptr->sockfd = ss_connect_can(ptr->can_interface);
+        if (ptr->sockfd < 0)
+        {
+            return -1;
+        }
+    }
+
+    unsigned char mask_poweron = global_configs.power[SS_POWER_ON].msg.data[0];
+    int resp = (ss_recv_frame(ptr->sockfd, &ptr->msg) == 0 ? (ptr->msg.data[0] & mask_poweron) : -1);
+
+    return resp;
 }
 
 
@@ -150,22 +178,6 @@ start_sensors_check_ip(int index_ip)
     }
     
     return (resp == 0);
-}
-
-
-int
-start_sensores_exec_read_state()
-{
-    start_sensors_can_data_t *ptr = &global_configs.power[SS_READ_STATE];
-    if (ptr->sockfd < 0)
-    {
-       ptr->sockfd = ss_connect_can(ptr->can_interface);
-    }
-
-    unsigned char mask_poweron = global_configs.power[SS_POWER_ON].msg.data[0];
-    int resp = (ss_recv_frame(ptr->sockfd, &ptr->msg) == 0 ? (ptr->msg.data[0] & mask_poweron) : -1);
-
-    return resp;
 }
 
 
@@ -225,22 +237,23 @@ read_data_can(start_sensors_can_data_t *dst,  yaml_event_t *event, yaml_parser_t
         yaml_parser_parse(parser, event);
         if (event->type == YAML_SCALAR_EVENT)
         {
-            if (strcmp(event->data.scalar.value, "frame") == 0)
+            char *value = (char *) event->data.scalar.value;
+            if (strcmp(value, "frame") == 0)
             {
                 yaml_event_delete(event), yaml_parser_parse(parser, event);
-                memset(&dst->msg.data, 0, sizeof(char)*8);
-                start_sensors_convert_str_to_num(dst->msg.data, event->data.scalar.value, IHEXA);
-                dst->msg.can_dlc = 1U;
+
+                dst->msg.can_dlc = 1;
+                start_sensors_convert_str_to_num(dst->msg.data, (const char *) event->data.scalar.value, LHEXA);
             }
-            else if (strcmp(event->data.scalar.value, "message") == 0)
+            else if (strcmp(value, "message") == 0)
             {
                 yaml_event_delete(event), yaml_parser_parse(parser, event);
-                start_sensors_convert_str_to_num(&dst->msg.can_id, event->data.scalar.value, IHEXA);
+                start_sensors_convert_str_to_num(&dst->msg.can_id, (const char *) event->data.scalar.value, IHEXA);
             }
-            else if (strcmp(event->data.scalar.value, "interface") == 0)
+            else if (strcmp(value, "interface") == 0)
             {
                 yaml_event_delete(event), yaml_parser_parse(parser, event);
-                strncpy(dst->can_interface, event->data.scalar.value, START_SENSORS_AS(dst->can_interface));
+                strncpy(dst->can_interface, (const char *) event->data.scalar.value, START_SENSORS_AS(dst->can_interface));
             }
         }
 
@@ -265,8 +278,11 @@ read_data_ips(start_sensors_ip_t *dst,  yaml_event_t *event, yaml_parser_t *pars
         if (event->type == YAML_SCALAR_EVENT)
         {
             char buf[16];
+            char *value = (char *) event->data.scalar.value;
+
             snprintf(buf, START_SENSORS_AS(buf), "sensor%ld", index+1);
-            if (strcmp(event->data.scalar.value, buf) == 0)
+
+            if (strcmp(value, buf) == 0)
             {
                 index++;
                 yaml_event_delete(event);
@@ -278,20 +294,21 @@ read_data_ips(start_sensors_ip_t *dst,  yaml_event_t *event, yaml_parser_t *pars
                 yaml_parser_parse(parser, event);
                 if (event->type == YAML_SCALAR_EVENT)
                 {
-                    if (strcmp(event->data.scalar.value, "id") == 0)
+                    value = (char *) event->data.scalar.value;
+                    if (strcmp(value, "id") == 0)
                     {
                         yaml_event_delete(event), yaml_parser_parse(parser, event);
-                        strncpy(dst[index-1].sensor, event->data.scalar.value, START_SENSORS_AS(dst->sensor));
+                        strncpy(dst[index-1].sensor, (const char *) event->data.scalar.value, START_SENSORS_AS(dst->sensor));
                     }
-                    else if (strcmp(event->data.scalar.value, "ip") == 0)
+                    else if (strcmp(value, "ip") == 0)
                     {
                         yaml_event_delete(event), yaml_parser_parse(parser, event);
-                        strncpy(dst[index-1].ip, event->data.scalar.value, START_SENSORS_AS(dst->ip));
+                        strncpy(dst[index-1].ip, (const char *) event->data.scalar.value, START_SENSORS_AS(dst->ip));
                     }
-                    else if (strcmp(event->data.scalar.value, "critical_level") == 0)
+                    else if (strcmp(value, "critical_level") == 0)
                     {
                         yaml_event_delete(event), yaml_parser_parse(parser, event);
-                        start_sensors_convert_str_to_num(&dst[index-1].critical_level, event->data.scalar.value, INT);
+                        start_sensors_convert_str_to_num(&dst[index-1].critical_level, (const char *) event->data.scalar.value, INT);
                     }
                 }
 
@@ -321,7 +338,7 @@ start_sensores_set_fconfigs(const char *file)
     if (file && !fconfigs)
     {
         size_t len = strlen(file) + 1;
-        start_sensors_copy_data(&fconfigs, file, len * sizeof(char));
+        start_sensors_copy_data((void **) &fconfigs, file, len * sizeof(char));
         fconfigs[len-1] = '\0'; //confirmação do terminador nulo
     }
 }
@@ -407,22 +424,23 @@ start_sensores_extract_configs_from_file()
         yaml_parser_parse(&parser, &event);
         if (event.type == YAML_SCALAR_EVENT)
         {
-            if (strcmp(event.data.scalar.value, ss_tag_yaml_to_string(SS_TAG_YAML_POWER_ON)) == 0)
+            char *value = (char *) event.data.scalar.value;
+            if (strcmp(value, ss_tag_yaml_to_string(SS_TAG_YAML_POWER_ON)) == 0)
             {
                 yaml_event_delete(&event), yaml_parser_parse(&parser, &event);
                 read_data_can(&global_configs.power[SS_POWER_ON], &event, &parser);
             }
-            else if (strcmp(event.data.scalar.value, ss_tag_yaml_to_string(SS_TAG_YAML_POWER_OFF)) == 0)
+            else if (strcmp(value, ss_tag_yaml_to_string(SS_TAG_YAML_POWER_OFF)) == 0)
             {
                yaml_event_delete(&event), yaml_parser_parse(&parser, &event);
                read_data_can(&global_configs.power[SS_POWER_OFF], &event, &parser);
             }
-            else if (strcmp(event.data.scalar.value, ss_tag_yaml_to_string(SS_TAG_YAML_READ_STATE)) == 0)
+            else if (strcmp(value, ss_tag_yaml_to_string(SS_TAG_YAML_READ_STATE)) == 0)
             {
                yaml_event_delete(&event), yaml_parser_parse(&parser, &event);
                read_data_can(&global_configs.power[SS_READ_STATE], &event, &parser);
             }
-            else if (strcmp(event.data.scalar.value, ss_tag_yaml_to_string(SS_TAG_YAML_SENSORS)) == 0)
+            else if (strcmp(value, ss_tag_yaml_to_string(SS_TAG_YAML_SENSORS)) == 0)
             {
                yaml_event_delete(&event), yaml_parser_parse(&parser, &event);
                global_configs.ips_size = read_data_ips(global_configs.ips, &event, &parser);

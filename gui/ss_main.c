@@ -85,6 +85,9 @@ init_main_window (GtkApplication *app, gpointer  data)
 static void
 close_app(SsController *ctl, gpointer data, gpointer user_data)
 {
+    (void) ctl;
+    (void) data;
+
     GtkApplication *app = (GtkApplication *) user_data;
     g_application_quit(G_APPLICATION(app));
 }

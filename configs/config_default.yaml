@@ -1,28 +1,34 @@
 poweron:
+  to_use: on
   frame: 0X01
   message: 220
   interface: vcan0
 
 poweroff:
+  to_use: on
   frame: 0X00
   message: 220
   interface: vcan0
 
 read_status:
+  to_use: on
   frame: 0X01
   message: 223
   interface: vcan0
 
 sensors:
   sensor1:
+    - to_use: on
     - id: lidar0
     - ip: 192.168.1.16
     - critical_level: 3
   sensor2:
+    - to_use: on
     - id: lidar5
     - ip: 192.168.1.16
     - critical_level: 2
   sensor3:
+    - to_use: on
     - id: imu
     - ip: 192.168.1.111
     - critical_level: 3
