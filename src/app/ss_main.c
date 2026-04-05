@@ -3,13 +3,13 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "start_sensors.h"
-#include "start_sensors_types.h"
-#include "start_sensors_utils.h"
+#include "../backend/ss_core.h"
+#include "../core/ss_core_types.h"
+#include "../infra/log/ss_logger.h"
+#include "../infra/utils/ss_utils.h"
+#include "../controller/ss_controller.h"
 
-#define log_error_path START_SENSORS_PATH"/logs/log_error"
-#define config_path_default START_SENSORS_PATH"/configs/config_default.yaml"
-
+#define config_path_default START_SENSORS_PATH"/config/config_default.yaml"
 
 char *file_config = NULL;
 
@@ -33,7 +33,7 @@ read_parameters(int argc, char **argv)
         if (shortsopt[0] == opt)
         {
             size_t nbyte = ((strlen(optarg) + 1) * sizeof(char));
-            start_sensors_copy_data((void **) &file_config, (void *) optarg, nbyte);
+            ss_copy_data((void **) &file_config, (void *) optarg, nbyte);
         }
         else
         {
@@ -44,8 +44,8 @@ read_parameters(int argc, char **argv)
 
     if (!file_config)
     {
-        size_t nbyte = (START_SENSORS_STR_LITERAL_LEN(config_path_default) + 1) * sizeof(char);
-        start_sensors_copy_data((void **) &file_config, config_path_default, nbyte);
+        size_t nbyte = (SS_STR_LITERAL_LEN(config_path_default) + 1) * sizeof(char);
+        ss_copy_data((void **) &file_config, config_path_default, nbyte);
     }
 }
 
@@ -53,18 +53,18 @@ read_parameters(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-    start_sensors_init_log(log_error_path);
+    ss_init_log();
 
     read_parameters(argc, argv);
-    start_sensores_set_fconfigs(file_config);
-    start_sensores_extract_configs_from_file();
+    ss_set_fconfigs(file_config);
+    ss_extract_configs_from_file();
 
     ss_set_error_handler((ss_error_handler_t) ss_send_notify_ts);
-    start_sensores_init_can();
+    ss_init_can();
 
     if (ss_start(argc, argv))
     {
-        ss_fatal_errno("Check os erros ocorridos no arquivo %s.", start_sensores_get_log_file(NULL));
+        ss_fatal_errno("Check os erros ocorridos no arquivo %s.", ss_get_log_file(NULL));
     }
     
     return 0;

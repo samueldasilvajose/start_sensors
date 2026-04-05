@@ -1,65 +1,41 @@
-# -------------------------------
-# Compilador
-# -------------------------------
 CC = gcc
 
-# -------------------------------
-# Diretório do projeto
-# -------------------------------
 PROJECT_DIR := $(shell pwd)
 
-# -------------------------------
-# Flags padrão do compilador
-# -------------------------------
 NORMAL_CFLAGS := -Wall -Wextra -I/usr/include/yaml
 DEBUG_CFLAGS  := $(NORMAL_CFLAGS) -g -DDEBUG
 
-# -------------------------------
-# GTK 3 + GLib/GObject + YAML (pkg-config)
-# -------------------------------
 GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 gobject-2.0 glib-2.0 gdk-pixbuf-2.0)
 GTK_LIBS   := $(shell pkg-config --libs gtk+-3.0 gobject-2.0 glib-2.0 gdk-pixbuf-2.0) -lyaml
 
-# -------------------------------
-# Executável
-# -------------------------------
 CLI_TARGET = start_sensors
 
-# -------------------------------
-# Arquivos fonte
-# -------------------------------
-CLI_SRC = start_sensors_main.c start_sensors_can.c start_sensors_error.c start_sensors_utils.c start_sensors.c \
-	gui/ss_app_context.c gui/ss_body.c gui/ss_controller.c gui/ss_error.c gui/ss_header.c gui/ss_main.c gui/ss_signal.c gui/ss_style.c
+CLI_SRC = src/app/ss_main.c src/backend/ss_can.c src/backend/ss_core.c src/controller/ss_controller.c \
+		  src/infra/error/ss_error_message.c src/infra/utils/ss_utils.c src/infra/log/ss_logger.c \
+		  src/ui/ss_app_context.c src/ui/ss_ui_error.c src/ui/ss_signal.c \
+		  src/ui/ss_body.c src/ui/ss_header.c src/ui/ss_main.c src/ui/ss_style.c
+		  
 
-# -------------------------------
-# Alvo padrão (compilação normal)
-# -------------------------------
-all: $(CLI_TARGET)
+CFLAGS_COMMON = $(GTK_CFLAGS) \
+	-DSTART_SENSORS_PATH=\"$(PROJECT_DIR)\" \
+	-DSS_PATH_GUI=\"$(PROJECT_DIR)/src/ui\"
 
-# -------------------------------
-# Compila CLI normal
-# -------------------------------
-$(CLI_TARGET): $(CLI_SRC)
-	$(CC) $(NORMAL_CFLAGS) $(GTK_CFLAGS) -DSTART_SENSORS_PATH=\"$(PROJECT_DIR)\" -DSS_PATH_GUI=\"$(PROJECT_DIR)/gui\" $(CLI_SRC) -o $@ $(GTK_LIBS)
+LDFLAGS_COMMON = $(GTK_LIBS)
 
-# -------------------------------
-# Compila em modo debug
-# -------------------------------
-debug: $(CLI_SRC)
-	$(CC) $(DEBUG_CFLAGS) $(GTK_CFLAGS) -DSTART_SENSORS_PATH=\"$(PROJECT_DIR)\" -DSS_PATH_GUI=\"$(PROJECT_DIR)/gui\" $(CLI_SRC) -o $(CLI_TARGET) $(GTK_LIBS)
+all: build/$(CLI_TARGET)
 
-# -------------------------------
-# Limpa executáveis
-# -------------------------------
+build-dir:
+	mkdir -p build
+
+build/$(CLI_TARGET): $(CLI_SRC) | build-dir
+	$(CC) $(NORMAL_CFLAGS) $(CFLAGS_COMMON) \
+	$(CLI_SRC) -o $@ $(LDFLAGS_COMMON)
+
+debug: | build-dir
+	$(CC) $(DEBUG_CFLAGS) $(CFLAGS_COMMON) \
+	$(CLI_SRC) -o build/$(CLI_TARGET) $(LDFLAGS_COMMON)
+
 clean:
-	rm -f $(CLI_TARGET)
+	rm -f build/$(CLI_TARGET)
 
-# -------------------------------
-# Recompila tudo
-# -------------------------------
-rebuild: clean all
-
-# -------------------------------
-# Alvos especiais
-# -------------------------------
-.PHONY: all clean rebuild debug
+.PHONY: all clean debug build-dir

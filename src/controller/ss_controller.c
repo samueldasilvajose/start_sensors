@@ -1,9 +1,14 @@
-#include "ss_main.h"
-#include "ss_signal.h"
-#include "ss_header.h"
-#include "ss_controller.h"
+#include "../ui/ss_main.h"
+#include "../ui/ss_signal.h"
+#include "../ui/ss_header.h"
+#include "../ui/ss_ui_error.h"
 
-#include "../start_sensors.h"
+#include "../backend/ss_core.h"
+#include "../core/ss_core_types.h"
+#include "../infra/log/ss_logger.h"
+#include "../infra/error/ss_error.h"
+
+#include "ss_controller.h"
 
 static int id_thread = 0;
 static GMutex check_ips_mutex;
@@ -14,7 +19,7 @@ static SsController *ss_controller = NULL;
 int
 ss_poweron_sensors()
 {
-    return start_sensores_exec_poweron();
+    return ss_exec_poweron();
 }
 
 
@@ -22,14 +27,14 @@ int
 ss_poweroff_sensors()
 {
     ss_send_stack_msg(SS_STACK_COMPONENTS_EMPTY);
-    return start_sensores_exec_poweroff();
+    return ss_exec_poweroff();
 }
 
 
 int
 ss_read_state_sensors()
 {
-    return start_sensores_exec_read_state();
+    return ss_exec_read_state();
 }
 
 
@@ -40,7 +45,7 @@ check_ips(gpointer data)
     gsize list_ips_size = GPOINTER_TO_SIZE(data);
     for (gsize i = 0; i < list_ips_size; i++)
     {
-        ips_connect += start_sensors_check_ip(i);
+        ips_connect += ss_check_ip(i);
     }
 
     if (ips_connect == list_ips_size)
@@ -64,7 +69,7 @@ wrapper_check_ips(gpointer data)
 {
     *(int *) data = 0;
 
-    gsize size = start_sensores_get_configs()->ips_size;
+    gsize size = ss_get_configs()->sensors.size;
     GThread *thread = g_thread_new("check_ips", check_ips, GSIZE_TO_POINTER(size));
     g_thread_unref(thread);
     return FALSE;
@@ -144,11 +149,11 @@ ss_send_notify(int critical_level, const char *msg)
     
     noti.err = critical_level;
     g_strlcpy(noti.msg, msg, (sizeof(noti.msg)/sizeof(noti.msg[0])));
-    start_sensores_salve_log(&noti);
+    ss_salve_log(&noti);
 
-    if (noti.err == SS_ERROR_ABORT)
+    if (noti.err == SS_ERROR_FATAL)
     {
-        ss_set_error(SS_ERROR_ABORT);
+        ss_set_error(SS_ERROR_FATAL);
         _ss_controller_close_app(ss_controller, NULL);
     }
     

@@ -2,7 +2,8 @@
 
 #include "ss_main.h"
 #include "ss_header.h"
-#include "ss_controller.h"
+#include "ss_ui_error.h"
+#include "../controller/ss_controller.h"
 
 //adicionando configs
 //#include "ss_header_settings.h"

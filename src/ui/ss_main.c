@@ -5,8 +5,9 @@
 #include "ss_types.h"
 #include "ss_style.h"
 #include "ss_header.h"
-#include "ss_controller.h"
+#include "ss_ui_error.h"
 #include "ss_app_context.h"
+#include "../controller/ss_controller.h"
 
 
 SsMainWindowContext *
@@ -35,7 +36,7 @@ generates_main_window_geometry(SsMainWindowContext *win_ctx)
 
     if (!monitor)
     {
-        ss_send_notify(SS_ERROR_ABORT, "Não foi possivel acessar as configurações de display");
+        ss_send_notify(SS_ERROR_FATAL, "Não foi possivel acessar as configurações de display");
     }
 
     GdkRectangle geometry = {0};
@@ -104,7 +105,7 @@ ss_rum_app(int argc, char **argv)
 
     if (g_application_run(G_APPLICATION(app_ctx->app), argc, argv) != 0)
     {
-        ss_set_error(SS_ERROR_ABORT);
+        ss_set_error(SS_ERROR_FATAL);
     }
 
     g_object_unref(app_ctx->app);

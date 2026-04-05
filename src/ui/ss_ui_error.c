@@ -1,5 +1,5 @@
 #include <stdatomic.h>
-#include "ss_error.h"
+#include "ss_ui_error.h"
 
 
 static atomic_int ss_errno = 0;

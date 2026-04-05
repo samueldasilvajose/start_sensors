@@ -1,6 +1,8 @@
 #include <gtk/gtk.h>
+
 #include "ss_style.h"
-#include "ss_controller.h"
+#include "ss_ui_error.h"
+#include "../controller/ss_controller.h"
 
 
 void
@@ -16,7 +18,7 @@ set_image_scaled(SsWallpaperContext *ctx)
     }
     else
     {
-        ss_send_notify(SS_ERROR_WARNING, "não foi possivel alterar o wallpaper");
+        ss_send_notify(SS_ERROR_ERROR, "não foi possivel alterar o wallpaper");
     }
 }
 

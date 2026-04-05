@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include "start_sensors_error.h"
+
+#include "ss_error_message.h"
 
 
 struct error_dispatcher

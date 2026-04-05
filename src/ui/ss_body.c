@@ -1,6 +1,8 @@
 #include <gtk/gtk.h>
+
 #include "ss_body.h"
-#include "ss_controller.h"
+#include "ss_ui_error.h"
+#include "../controller/ss_controller.h"
 
 
 SsBodyContext *

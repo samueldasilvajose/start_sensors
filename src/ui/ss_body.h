@@ -5,8 +5,8 @@
 #include "ss_types.h"
 #include "ss_style.h"
 
-#define IMG_SENSORS_ON  SS_PATH_GUI"/img/power_sensors.png"
-#define IMG_SENSORS_OFF  SS_PATH_GUI"/img/poweroff_sensors.png"
+#define IMG_SENSORS_ON  SS_PATH_GUI"/../../assets/images/power_sensors.png"
+#define IMG_SENSORS_OFF  SS_PATH_GUI"/../../assets/images/poweroff_sensors.png"
 
 typedef enum
 {

@@ -1,15 +1,43 @@
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include "ss_utils.h"
 
-#include "start_sensors_utils.h"
+
+bool
+ss_creat_dir(const char *path)
+{
+    errno = 0;
+    if (mkdir(path, 0755) == 0)
+    {
+        return true;
+    } else
+    {
+        ss_publish_error(SS_ERROR_ERROR, "The logs folder could not be created (%s)", strerror(errno));
+        return false;
+    }
+}
 
 
-int
-start_sensors_copy_data(void **dst, const void *src, size_t nbytes)
+bool
+ss_dir_exists(const char *path)
+{
+    struct stat info;
+    if (stat(path, &info) != 0)
+    {
+        return 0;
+    }
+
+    return S_ISDIR(info.st_mode);
+}
+
+
+short
+ss_copy_data(void **dst, const void *src, size_t nbytes)
 {
     if (*dst || !src || (nbytes == SIZE_MAX))
     {
@@ -17,14 +45,14 @@ start_sensors_copy_data(void **dst, const void *src, size_t nbytes)
     }
     
     *dst = malloc(nbytes);
-    start_sensors_test_alloc(*dst);
+    ss_test_alloc(*dst);
     memcpy(*dst, src, nbytes);
     return 0;    
 }
 
 
 size_t
-extra_keys_read_file(char **buf, const char *file_name)
+ss_read_file(char **buf, const char *file_name)
 {
     if (!file_name || !buf)
     {
@@ -45,14 +73,14 @@ extra_keys_read_file(char **buf, const char *file_name)
 
     //allocates enough memory to load the data from the file
     *buf = (char *) malloc((size_t) (arq_st.st_size + 1) * sizeof(char));
-    start_sensors_test_alloc(*buf);
+    ss_test_alloc(*buf);
 
     //number of bytes processed
     size_t read_bytes = fread(*buf, sizeof(char), (size_t) arq_st.st_size, file_r); //reads the entire file
     if (!read_bytes) //checks the number of elements read
     {
         ss_fatal_errno("Error: the file \"%s\" could not be read\n", file_name);
-        start_sensors_free(buf);
+        ss_free(buf);
     }
     else
     {
@@ -66,8 +94,8 @@ extra_keys_read_file(char **buf, const char *file_name)
 
 
 //Converts a string to a number, which can be of type int, long int, or double.
-int 
-start_sensors_convert_str_to_num(void *ptr, const char *num_str, convert_type_t type) 
+short 
+ss_convert_str_to_num(void *ptr, const char *num_str, ss_convert_type_t type) 
 {
     /*
         Error code:
@@ -85,7 +113,7 @@ start_sensors_convert_str_to_num(void *ptr, const char *num_str, convert_type_t 
 
     if ( !num_str || *num_str == '\0' )
     {
-        ss_publish_error(SS_ERROR_WARNING, "Error: null pointer.\n");
+        ss_publish_error(SS_ERROR_WARNING, "null pointer");
         return -2; //empty string
     }
     
@@ -184,17 +212,17 @@ start_sensors_convert_str_to_num(void *ptr, const char *num_str, convert_type_t 
     //error messages
     if (!end_num_str)
     {
-        ss_publish_error(SS_ERROR_WARNING, "Error: conversion (%d) not available.\n", type);
+        ss_publish_error(SS_ERROR_CRITICAL, "conversion (%d) not available", type);
         err = 1;
     }
     else if (*end_num_str != '\0')
     {
-        ss_publish_error(SS_ERROR_WARNING, "Error: number (%s) with non-numeric part (%s).\n", num_str, end_num_str);
+        ss_publish_error(SS_ERROR_CRITICAL, "number (%s) with non-numeric part (%s)", num_str, end_num_str);
         err = 2;
     }
     else if (err)
     {
-        ss_publish_error(SS_ERROR_WARNING, "Error: number (%s) outside the acceptable limit.\n", num_str);
+        ss_publish_error(SS_ERROR_CRITICAL, "number (%s) outside the acceptable limit", num_str);
     }
     
     return err;

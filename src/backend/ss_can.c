@@ -15,14 +15,14 @@
 #endif
 
 #include <linux/can/raw.h>
-#include "start_sensors_can.h"
+#include "ss_can.h"
 
 
 static ss_error_mask_t level_to_notify = SS_ERROR_CRITICAL_MASK;
 
 
 inline ss_error_mask_t
-ss_set_level_to_notify(ss_error_mask_t level)
+ss_set_can_level_to_notify(ss_error_mask_t level)
 {
 	ss_error_mask_t first_level = level_to_notify;
 	level_to_notify = level;
