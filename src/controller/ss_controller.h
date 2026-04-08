@@ -6,6 +6,10 @@
 // ================== frontend -> backend ================== //
 
 void ss_check_ips();
+void ss_controller_edit_ip(size_t index, ss_sensor_t *ip);
+void ss_controller_edit_can(ss_power_index_t index, ss_power_t *can);
+void ss_controller_get_configs(ss_configs_t *data);
+
 int ss_poweron_sensors();
 int ss_poweroff_sensors();
 int ss_read_state_sensors();

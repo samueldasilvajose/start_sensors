@@ -4,6 +4,7 @@
 #include "ss_main.h"
 #include "ss_style.h"
 #include "ss_types.h"
+#include "ss_header_settings.h"
 
 #define SS_STACK_COMPONENTS_LIST(X) \
     X(OK,       "ok")              \
@@ -51,6 +52,7 @@ typedef struct _SsHeaderContext
 {
     GtkWidget *header;
     SsStackContext stack;
+    SsHSettingsContext settings;
     SsNotificationContext notification;
     SsHistoryNotifyContext history_notify;
 } SsHeaderContext;

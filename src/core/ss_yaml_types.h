@@ -97,6 +97,19 @@ static const ss_yaml_map_t maps[] = \
     [SS_TAG_YAML_SENSORS]    = { _ip_fields, SS_SUBTAG_YAML_IP_LIST_COUNT },
 };
 
+
+static inline int
+ss_get_qtd_subtags_yaml(ss_tag_yaml_t type)
+{
+    if ((unsigned) type >= SS_TAG_YAML_LIST_COUNT)
+    {
+        return -1;
+    }
+    
+    return maps[type].count;
+}
+
+
 static inline const char *
 ss_subtag_yaml_to_string(ss_tag_yaml_t type, size_t subtype)
 {

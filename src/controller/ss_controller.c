@@ -16,6 +16,30 @@ static SsController *ss_controller = NULL;
 
 
 // ================== frontend -> backend ================== //
+void
+ss_controller_get_configs(ss_configs_t *data)
+{
+    ss_configs_t *tmp = ss_get_configs();
+
+    memset(data, 0, sizeof(ss_configs_t));
+    *data = *tmp;
+}
+
+
+void
+ss_controller_edit_ip(size_t index, ss_sensor_t *ip)
+{
+    ss_edit_ip(index, ip);
+}
+
+
+void
+ss_controller_edit_can(ss_power_index_t index, ss_power_t *can)
+{
+    ss_edit_can(index, can);
+}
+
+
 int
 ss_poweron_sensors()
 {

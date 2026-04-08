@@ -5,9 +5,6 @@
 #include "ss_ui_error.h"
 #include "../controller/ss_controller.h"
 
-//adicionando configs
-//#include "ss_header_settings.h"
-
 
 SsHeaderContext *
 ss_header_context_new()
@@ -136,7 +133,7 @@ create_viewer_notification(GtkWidget *button, SsHistoryNotifyContext *popover_ct
 {
     popover_ctx->popover = gtk_popover_new(button);
     gtk_popover_set_position(GTK_POPOVER(popover_ctx->popover), GTK_POS_BOTTOM);
-    gtk_widget_set_size_request(popover_ctx->popover, geo_win->width*0.5, geo_win->height);
+    gtk_widget_set_size_request(popover_ctx->popover, geo_win->width*0.5, geo_win->height*0.99);
 
     GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_container_add(GTK_CONTAINER(popover_ctx->popover), scroll);
@@ -209,10 +206,10 @@ ss_create_header(SsHeaderContext **header_ctx, SsMainWindowContext *win_ctx)
     g_signal_connect (win_ctx->controller, ss_singnal_to_string(SS_SIGNAL_UPDATE_BACKEND_STACK),
         G_CALLBACK(ss_define_item_in_stack), &(*header_ctx)->stack);
 
-    //adicionando configs
-    //GtkWidget *button_config = gtk_button_new_from_icon_name("preferences-system", GTK_ICON_SIZE_BUTTON);
-    //gtk_widget_set_tooltip_text(button_config, "Configurações");
-    //gtk_box_pack_start(GTK_BOX((*header_ctx)->header), button_config, FALSE, FALSE, 0);
+    GtkWidget *button_config = gtk_button_new_from_icon_name("preferences-system", GTK_ICON_SIZE_BUTTON);
+    gtk_widget_set_tooltip_text(button_config, "Configurações");
+    gtk_box_pack_start(GTK_BOX((*header_ctx)->header), button_config, FALSE, FALSE, 0);
+    ss_create_box_settings(&(*header_ctx)->settings, button_config, &win_ctx->geo);
 
     GtkWidget *button_info = gtk_button_new_from_icon_name("dialog-information", GTK_ICON_SIZE_BUTTON);
     gtk_widget_set_tooltip_text(button_info, "Historico de notificações");
