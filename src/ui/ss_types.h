@@ -5,8 +5,7 @@
 #define SS_PATH_GUI ""
 #endif
 
-typedef struct _GtkWidget GtkWidget;
-typedef struct _GtkTextBuffer GtkTextBuffer;
+#include <gtk/gtk.h>
 
 typedef struct
 {

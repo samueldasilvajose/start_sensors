@@ -75,11 +75,11 @@ init_main_window (GtkApplication *app, gpointer  data)
     ss_create_header(&app_ctx->header, ctx);
     ss_create_body(&app_ctx->body, ctx);
     ss_create_footer(app_ctx->body, ctx);
-    
-    gtk_widget_show_all(ctx->main_win);
 
-    ss_send_stack_msg(SS_STACK_COMPONENTS_EMPTY);
-    ss_set_power_theme(app_ctx->body, SS_THEME_POWEROFF, "");
+    gtk_widget_show_all(ctx->main_win);
+    set_default_state(app_ctx->body);
+    ss_read_can_state();
+    g_timeout_add(1500, ss_desired_power_status, (gpointer) app_ctx->body);
 }
 
 

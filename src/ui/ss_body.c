@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 
 #include "ss_body.h"
+#include "ss_header.h"
 #include "ss_ui_error.h"
 #include "../controller/ss_controller.h"
 
@@ -49,11 +50,13 @@ poweron_sensors(GtkWidget *button, gpointer data)
     (void) button;
 
     SsBodyContext *ctx = data;
-    if (SS_THEME_POWERON == ctx->current_theme || ss_poweron_sensors() != 0)
+    if (SS_THEME_POWERON == ctx->current_theme)
     {
         return;
     }
 
+    ss_poweron_sensors();
+    
     ss_check_ips();
     ss_set_power_theme(data, SS_THEME_POWERON, "Sensores ligados!");
 }
@@ -73,6 +76,58 @@ poweroff_sensors(GtkWidget *button, gpointer data)
     ss_set_power_theme(data, SS_THEME_POWEROFF, "Sensores desligados!");
     ss_poweroff_sensors();
     ss_check_ips_encerrer();
+}
+
+
+void
+set_default_state(SsBodyContext *ctx)
+{
+    ss_send_stack_msg(SS_STACK_COMPONENTS_EMPTY);
+    ss_set_power_theme(ctx, SS_THEME_POWEROFF, "");
+}
+
+
+static void
+desired_power_status(SsBodyContext *ctx)
+{
+    ss_configs_t data = {0};
+    ss_controller_get_configs(&data);
+
+    if (!data.power[SS_READ_STATE].to_use)
+    {
+        set_default_state(ctx);
+        return;
+    }
+
+    int current_state = -1;
+    if ((current_state = ss_read_state_sensors()) >= 0)
+    {
+        if (current_state)
+        {
+            poweron_sensors(NULL, ctx);
+        }
+        else
+        {
+            poweroff_sensors(NULL, ctx);
+        }
+    }
+    else
+    {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "Não foi encontrado a mensagem de status (msg: %x, frame: 0x0%x)",
+                    data.power[SS_READ_STATE].msg.can_id, data.power[SS_READ_STATE].msg.data[0]);
+        set_default_state(ctx);
+        ss_send_notify(SS_ERROR_ERROR, buf);
+    }
+}
+
+
+gboolean
+ss_desired_power_status(gpointer data)
+{
+    SsBodyContext *ctx = (SsBodyContext *) data;
+    desired_power_status(ctx);
+    return FALSE;
 }
 
 

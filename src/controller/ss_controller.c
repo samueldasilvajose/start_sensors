@@ -1,16 +1,17 @@
+#include "../ui/ss_body.h"
 #include "../ui/ss_main.h"
 #include "../ui/ss_signal.h"
 #include "../ui/ss_header.h"
 #include "../ui/ss_ui_error.h"
 
-#include "../backend/ss_core.h"
 #include "../core/ss_core_types.h"
 #include "../infra/log/ss_logger.h"
 #include "../infra/error/ss_error.h"
 
 #include "ss_controller.h"
 
-static int id_thread = 0;
+static int id_thread_ck_ip = 0;
+static gint in_exec_rd_can = 0;
 static GMutex check_ips_mutex;
 static SsController *ss_controller = NULL;
 
@@ -19,8 +20,7 @@ static SsController *ss_controller = NULL;
 void
 ss_controller_get_configs(ss_configs_t *data)
 {
-    ss_configs_t *tmp = ss_get_configs();
-
+    const ss_configs_t *tmp = ss_get_configs();
     memset(data, 0, sizeof(ss_configs_t));
     *data = *tmp;
 }
@@ -55,10 +55,34 @@ ss_poweroff_sensors()
 }
 
 
+static gpointer
+read_can_state(gpointer data)
+{
+    (void) data;
+    ss_exec_read_state();
+    g_atomic_int_set(&in_exec_rd_can, 0);
+    return NULL;
+}
+
+
+void
+ss_read_can_state()
+{
+    if (!g_atomic_int_compare_and_exchange(&in_exec_rd_can, 0, 1))
+    {
+        ss_send_notify(SS_ERROR_WARNING, "Checagem do status já em andamento");
+        return;
+    }
+    
+    GThread *thread = g_thread_new("read_can_state", read_can_state, NULL);
+    g_thread_unref(thread);
+}
+
+
 int
 ss_read_state_sensors()
 {
-    return ss_exec_read_state();
+    return ss_get_sensores_state();
 }
 
 
@@ -102,10 +126,10 @@ wrapper_check_ips(gpointer data)
 void
 ss_check_ips_encerrer()
 {
-    if (id_thread)
+    if (id_thread_ck_ip)
     {
-        g_source_remove(id_thread);
-        id_thread = 0;
+        g_source_remove(id_thread_ck_ip);
+        id_thread_ck_ip = 0;
     }
 }
 
@@ -114,7 +138,7 @@ ss_check_ips()
 {
     ss_check_ips_encerrer();
     ss_send_stack_msg(SS_STACK_COMPONENTS_LOADING);
-    id_thread = g_timeout_add(10000, wrapper_check_ips, (gpointer) &id_thread); //aguarda 10s
+    id_thread_ck_ip = g_timeout_add(10000, wrapper_check_ips, (gpointer) &id_thread_ck_ip); //aguarda 10s
 }
 
 
@@ -134,7 +158,6 @@ ss_send_stack_msg(int err_user)
     
     if ((unsigned) err > SS_STACK_COMPONENTS_COUNT)
     {
-        g_mutex_unlock(&check_ips_mutex);
         return;
     }
 

@@ -23,9 +23,12 @@ typedef struct _SsBodyContext
 
 SsBodyContext *ss_body_context_new();
 void ss_body_context_free(SsBodyContext **ctx);
+void set_default_state(SsBodyContext *ctx);
 
 void ss_create_body(SsBodyContext **body_ctx, SsMainWindowContext *win_ctx);
 void ss_create_footer(SsBodyContext *body_ctx, SsMainWindowContext *win_ctx);
 int ss_set_power_theme(SsBodyContext *ctx, int theme, const char *msg);
+
+gboolean ss_desired_power_status(gpointer data);
 
 #endif // SS_FOOTER_H

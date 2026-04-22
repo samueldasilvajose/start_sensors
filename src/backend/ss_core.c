@@ -1,18 +1,22 @@
 #include <yaml.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
+#include <sys/select.h>
 
 #include "ss_can.h"
 #include "ss_core.h"
 #include "../core/ss_yaml_types.h"
 #include "../infra/utils/ss_utils.h"
 #include "../controller/ss_controller.h"
+#include "../infra/error/ss_error_message.h"
 
 
 static ss_configs_t global_configs = {0};
 
-static int power_state = 0;
+static atomic_int power_state = -1;
 static ss_error_mask_t level_to_notify = SS_ERROR_ERROR_MASK;
 
 static char *fconfigs = NULL;
@@ -39,20 +43,25 @@ ss_init_can()
 int
 ss_exec_poweron()
 {
+    ss_lock_check_ips_mutex();
     ss_power_t *ptr = &global_configs.power[SS_POWER_ON];
     if (ptr->sockfd < 0)
     {
        ptr->sockfd = ss_connect_can(ptr->can_interface);
        if (ptr->sockfd < 0)
        {
+            ss_unlock_check_ips_mutex();
             return -1;
        }
     }
+
+    ss_power_t ref = *ptr;
+    ss_unlock_check_ips_mutex();
     
-    if (!power_state)
+    if (atomic_load(&power_state) <= 0)
     {
-        ss_send_frame(ptr->sockfd, &ptr->msg);
-        power_state = 1;
+        ss_send_frame(ref.sockfd, &ref.msg);
+        atomic_store(&power_state, 1);
 
         return 0;
     }
@@ -64,20 +73,25 @@ ss_exec_poweron()
 int
 ss_exec_poweroff()
 {
+    ss_lock_check_ips_mutex();
     ss_power_t *ptr = &global_configs.power[SS_POWER_OFF];
     if (ptr->sockfd < 0)
     {
         ptr->sockfd = ss_connect_can(ptr->can_interface);
         if (ptr->sockfd < 0)
         {
+            ss_unlock_check_ips_mutex();
             return -1;
         }
     }
+
+    ss_power_t ref = *ptr;
+    ss_unlock_check_ips_mutex();
     
-    if (power_state)
+    if (atomic_load(&power_state))
     {
-        ss_send_frame(ptr->sockfd, &ptr->msg);
-        power_state = 0;
+        ss_send_frame(ref.sockfd, &ref.msg);
+        atomic_store(&power_state, 0);
 
         return 0;
     }
@@ -87,21 +101,73 @@ ss_exec_poweroff()
 
 
 int
+ss_get_sensores_state()
+{
+    return atomic_load(&power_state);
+}
+
+
+int
 ss_exec_read_state()
 {
+    ss_lock_check_ips_mutex();
     ss_power_t *ptr = &global_configs.power[SS_READ_STATE];
+    if (!ptr->to_use)
+    {
+        ss_unlock_check_ips_mutex();
+        return -1;
+    }
+    
     if (ptr->sockfd < 0)
     {
         ptr->sockfd = ss_connect_can(ptr->can_interface);
         if (ptr->sockfd < 0)
         {
+            ss_unlock_check_ips_mutex();
             return -1;
         }
     }
 
+    ss_power_t ref = *ptr;
     unsigned char mask_poweron = global_configs.power[SS_POWER_ON].msg.data[0];
-    int resp = (ss_recv_frame(ptr->sockfd, &ptr->msg) == 0 ? (ptr->msg.data[0] & mask_poweron) : -1);
+    ss_unlock_check_ips_mutex();
 
+    fd_set readfds;
+    struct timeval timeout = {.tv_sec = 1, .tv_usec = 1000};
+
+    FD_ZERO(&readfds);
+    FD_SET(ref.sockfd, &readfds);
+
+    errno = 0;
+    int ret = select(ref.sockfd + 1, &readfds, NULL, NULL, &timeout);
+    int err = errno;
+
+    if (ret < 0)
+    {
+        ss_publish_error(SS_ERROR_CRITICAL, "Recv failed (%s)", strerror(err));
+        return -1;
+    }
+
+    if (ret == 0 || !FD_ISSET(ref.sockfd, &readfds))
+    {
+        ss_publish_error(SS_ERROR_CRITICAL, "Time expired, message not received");
+        return -1;
+    }
+    
+    int resp = (ss_recv_frame(ref.sockfd, &ref.msg) == 0 ? (ref.msg.data[0] & mask_poweron) : -1);
+    if (resp > 0)
+    {
+        atomic_store(&power_state, 1);
+    }
+    else if (resp == 0)
+    {
+        atomic_store(&power_state, 0);
+    }
+    else
+    {
+       atomic_store(&power_state, -1);
+    }
+    
     return resp;
 }
 
@@ -212,7 +278,9 @@ ss_edit_can(ss_power_index_t index, ss_power_t *can)
         return;
     }
     
+    ss_lock_check_ips_mutex();
     global_configs.power[index] = *can;
+    ss_unlock_check_ips_mutex();
 }
 
 
@@ -416,7 +484,7 @@ read_data_ips(ss_sensor_t *dst,  yaml_event_t *event, yaml_parser_t *parser)
             }
         }
 
-        if (event->type == YAML_MAPPING_END_EVENT)
+        if (event->type == YAML_STREAM_END_EVENT)
         {
             break;
         }

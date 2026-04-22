@@ -11,9 +11,9 @@ poweroff:
   interface: vcan0
 
 read_status:
-  to_use: 0
+  to_use: 1
   frame: 0X01
-  message: 223
+  message: 221
   interface: vcan0
 
 sensors:

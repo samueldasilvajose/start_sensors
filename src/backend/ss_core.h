@@ -21,6 +21,7 @@ int ss_check_ip(int index_ip);
 int ss_exec_poweron();
 int ss_exec_poweroff();
 int ss_exec_read_state();
+int ss_get_sensores_state();
 ss_error_mask_t ss_set_core_level_to_notify(ss_error_mask_t level);
 
 #endif //SS_CORE_H

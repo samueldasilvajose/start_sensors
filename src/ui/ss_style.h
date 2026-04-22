@@ -8,7 +8,8 @@
     X(BLACK,    "black")         \
     X(GREEN,    "green")         \
     X(BG_GRAY,  "bg_gray")       \
-    X(BG_WHITE, "bg_white")         
+    X(BG_WHITE, "bg_white")      \
+    X(EG_WHITE, "edge_white")    
 
 
 typedef enum

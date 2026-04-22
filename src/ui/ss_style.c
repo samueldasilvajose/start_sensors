@@ -57,6 +57,7 @@ ss_init_style()
         ".%s { color: #00aa00; } ",
         ".%s { background-color: #cccccc; } ",
         ".%s { background-color: white; }",
+        ".%s {  border: 1px solid #707070; }",
     };
 
     gint len_buf = 0;
