@@ -1,5 +1,4 @@
 #include <gtk/gtk.h>
-
 #include "ss_body.h"
 #include "ss_header.h"
 #include "ss_ui_error.h"
@@ -55,7 +54,8 @@ poweron_sensors(GtkWidget *button, gpointer data)
         return;
     }
 
-    ss_poweron_sensors();
+    if (ss_poweron_sensors() != 0)
+        return;
     
     ss_check_ips();
     ss_set_power_theme(data, SS_THEME_POWERON, "Sensores ligados!");

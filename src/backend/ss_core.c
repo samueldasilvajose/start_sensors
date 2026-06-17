@@ -60,10 +60,11 @@ ss_exec_poweron()
     
     if (atomic_load(&power_state) <= 0)
     {
-        ss_send_frame(ref.sockfd, &ref.msg);
-        atomic_store(&power_state, 1);
-
-        return 0;
+        if (!ss_send_frame(ref.sockfd, &ref.msg))
+        {
+            atomic_store(&power_state, 1);
+            return 0;
+        }
     }
 
     return 1;
@@ -90,10 +91,11 @@ ss_exec_poweroff()
     
     if (atomic_load(&power_state))
     {
-        ss_send_frame(ref.sockfd, &ref.msg);
-        atomic_store(&power_state, 0);
-
-        return 0;
+        if (!ss_send_frame(ref.sockfd, &ref.msg))
+        {
+            atomic_store(&power_state, 0);
+            return 0;
+        }
     }
 
     return 1;
@@ -249,7 +251,7 @@ ss_rm_ip(size_t index)
 inline void
 ss_edit_ip(size_t index, ss_sensor_t *ip)
 {
-    if (index == SIZE_MAX || index > IPS_MAX  - 1 || !ip)
+    if (index == SIZE_MAX || index > IPS_MAX || !ip)
     {
         if (ss_error_get_err_level(SS_ERROR_ERROR, level_to_notify) > 0)
         {
@@ -260,6 +262,9 @@ ss_edit_ip(size_t index, ss_sensor_t *ip)
     }
     
     ss_lock_check_ips_mutex();
+    if (index >= global_configs.sensors.size)
+        global_configs.sensors.size++;
+    
     global_configs.sensors.ips[index] = *ip;
     ss_unlock_check_ips_mutex();
 }

@@ -34,6 +34,7 @@ typedef struct
 typedef struct
 {
     short size;
+    GtkWidget *grid;
     SsFieldForms *field_forms;
     SsWidgetStyleContext label;
 } SsSettingsClass;

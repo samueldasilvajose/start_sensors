@@ -93,6 +93,14 @@ updat_sensor_tooltip_text_in_frame(GtkWidget *box, FlagAndConfig *data)
 
 
 static void
+edit_setting(GtkButton *button, gpointer data)
+{
+    FlagAndConfig *setting = (FlagAndConfig *) data;
+    
+}
+
+
+static void
 create_new_frame_settings(int line, GtkWidget *grid, bool to_use,
     const char *box_name, FlagAndConfig *data)
 {
@@ -135,6 +143,7 @@ create_new_frame_settings(int line, GtkWidget *grid, bool to_use,
 
     GtkWidget *config = gtk_button_new_from_icon_name("preferences-system", GTK_ICON_SIZE_BUTTON);
     gtk_widget_set_tooltip_text(config, "Alterar");
+    g_signal_connect(config, "clicked", G_CALLBACK(edit_setting), (gpointer) data);
 
     gtk_widget_set_margin_end(config, 10);
     gtk_grid_attach(GTK_GRID(grid), config, 2, line, 1, 1);
@@ -160,18 +169,18 @@ toggle_viewer_buttons_settings(GtkButton *button, gpointer data)
 }
 
 
-static GtkWidget *
-create_settings(GtkWidget *box_settings, const char *title, SsWidgetStyleContext *label)
+static void
+create_settings(GtkWidget *box_settings, const char *title, SsSettingsClass *setting)
 {
     GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_box_pack_start(GTK_BOX(box_settings), header_box, FALSE, FALSE, 0);
     gtk_widget_set_valign(header_box, GTK_ALIGN_START);
     gtk_widget_set_halign(header_box, GTK_ALIGN_START);
 
-    label->widget = gtk_label_new(title);
-    gtk_widget_set_halign(label->widget, GTK_ALIGN_START);
-    gtk_widget_set_margin_start(label->widget, 20);
-    gtk_box_pack_start(GTK_BOX(header_box), label->widget, TRUE, TRUE, 0);
+    setting->label.widget = gtk_label_new(title);
+    gtk_widget_set_halign(setting->label.widget, GTK_ALIGN_START);
+    gtk_widget_set_margin_start(setting->label.widget, 20);
+    gtk_box_pack_start(GTK_BOX(header_box), setting->label.widget, TRUE, TRUE, 0);
 
     GtkWidget *line = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_box_pack_start(GTK_BOX(box_settings), line, FALSE, FALSE, 0);
@@ -187,20 +196,18 @@ create_settings(GtkWidget *box_settings, const char *title, SsWidgetStyleContext
 
     g_signal_connect(config, "clicked", G_CALLBACK(toggle_viewer_buttons_settings), (gpointer) box);
 
-    GtkWidget *grid = gtk_grid_new();
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 8);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 20);
+    setting->grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(setting->grid), 8);
+    gtk_grid_set_column_spacing(GTK_GRID(setting->grid), 20);
 
-    gtk_box_pack_start(GTK_BOX(box), grid, TRUE, TRUE, 10);
-
-    return grid;
+    gtk_box_pack_start(GTK_BOX(box), setting->grid, TRUE, TRUE, 10);
 }
 
 
 static void
 create_cans_settings(GtkWidget *box_settings, const char *name_field, SsSettingsClass *conf_fields)
 {
-    GtkWidget *grid = create_settings(box_settings, name_field, &conf_fields->label);
+    create_settings(box_settings, name_field, conf_fields);
     ss_configs_t configs;
 
     ss_controller_get_configs(&configs);
@@ -210,7 +217,7 @@ create_cans_settings(GtkWidget *box_settings, const char *name_field, SsSettings
         conf_fields->field_forms[i].conf.flag = FlagSettingCan;
         conf_fields->field_forms[i].conf.identifier = i;
         conf_fields->field_forms[i].conf.sh_power = configs.power[i];
-        create_new_frame_settings(i, grid, configs.power[i].to_use, ss_tag_yaml_to_string(i),
+        create_new_frame_settings(i, conf_fields->grid, configs.power[i].to_use, ss_tag_yaml_to_string(i),
                                     &conf_fields->field_forms[i].conf);
     }
 }
@@ -219,7 +226,7 @@ create_cans_settings(GtkWidget *box_settings, const char *name_field, SsSettings
 static void
 create_sensors_settings(GtkWidget *box_settings, const char *name_field, SsSettingsClass *conf_fields)
 {
-    GtkWidget *grid = create_settings(box_settings, name_field, &conf_fields->label);
+    create_settings(box_settings, name_field, conf_fields);
     ss_configs_t configs;
 
     ss_controller_get_configs(&configs);
@@ -229,9 +236,17 @@ create_sensors_settings(GtkWidget *box_settings, const char *name_field, SsSetti
         conf_fields->field_forms[i].conf.flag = FlagSettingIp;
         conf_fields->field_forms[i].conf.identifier = i;
         conf_fields->field_forms[i].conf.sh_ip = configs.sensors.ips[i];
-        create_new_frame_settings(i, grid, configs.sensors.ips[i].to_use,
+        create_new_frame_settings(i, conf_fields->grid, configs.sensors.ips[i].to_use,
             ss_tag_yaml_to_string(SS_TAG_YAML_SENSORS), &conf_fields->field_forms[i].conf);
     }
+}
+
+
+static void
+add_new_sensor(GtkButton *button, gpointer data)
+{
+    SsSettingsClass *setting = (SsSettingsClass *) data;
+    
 }
 
 
@@ -266,6 +281,8 @@ ss_create_box_settings(SsHSettingsContext *ctx, GtkWidget *button, const SsGeome
     GtkWidget *new_sensor = gtk_button_new_with_label("New sensor");
     gtk_box_pack_start(GTK_BOX(header_settings), new_sensor, FALSE, FALSE, 15);
     gtk_widget_set_valign(new_sensor, GTK_ALIGN_END);
+
+    g_signal_connect(new_sensor, "clicked", G_CALLBACK(add_new_sensor), (gpointer) &ctx->list_configs[FlagSettingIp]);
 
     //body
     GtkWidget *body_settings = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);

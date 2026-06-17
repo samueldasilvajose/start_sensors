@@ -62,7 +62,7 @@ void
 ss_salve_log(SsNotifyMsg *noti)
 {
     static const char *name_log = NULL;
-    if (!save_log || (!name_log && !(name_log == ss_get_log_file(NULL))))
+    if (!save_log || (!name_log && !(name_log = ss_get_log_file(NULL))))
     {
         return;
     }
