@@ -113,6 +113,39 @@ ss_recv_last_frame(int sockfd, struct can_frame *frame)
 
 
 int
+ss_recv_frame_filter_msg(int sockfd, canid_t can_id, struct can_frame *frame)
+{
+    int received = 1;
+	struct can_frame current_frame = {0};
+
+	while (1)
+    {
+        int nbytes = recv(sockfd, &current_frame, sizeof(current_frame), 0);
+        if (nbytes > 0)
+        {
+			if (current_frame.can_id == can_id)
+			{
+				*frame = current_frame;
+				received = 0;
+			}
+			
+            continue;
+		}
+
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+		{
+			ss_publish_error(SS_ERROR_WARNING, "Recv failed (%s)", strerror(errno));
+			return 1;
+		}
+
+		break;
+    }
+
+	return received;
+}
+
+
+int
 ss_send_frame(int sockfd, struct can_frame *frame)
 {
 	ssize_t ret;

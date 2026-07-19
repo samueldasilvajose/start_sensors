@@ -118,7 +118,9 @@ poweron_sensors(GtkWidget *button, gpointer data)
     SsDashboardContext *ctx = data;
     if (SS_THEME_POWERON == ctx->current_theme)
         return;
+
     ss_poweron_sensors();
+    ss_set_power_theme(ctx, SS_THEME_POWERON, "Sensores ligados!");
 }
 
 
@@ -137,7 +139,9 @@ poweroff_sensors(GtkWidget *button, gpointer data)
     SsDashboardContext *ctx = data;
     if (SS_THEME_POWEROFF == ctx->current_theme)
         return;
+
     ss_poweroff_sensors();
+    ss_set_power_theme(ctx, SS_THEME_POWEROFF, "Sensores desligados!");
 }
 
 

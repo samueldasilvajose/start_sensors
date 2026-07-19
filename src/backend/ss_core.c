@@ -162,7 +162,7 @@ ss_exec_read_state()
     
     int resp = -1;
     struct can_frame msg = {0};
-    if (ss_recv_last_frame(ref.sockfd, &msg) == 0 && msg.can_id == ref.msg.can_id)
+    if (ss_recv_frame_filter_msg(ref.sockfd, ref.msg.can_id, &msg) == 0)
         resp = (msg.data[0] & mask_poweron) ? 1 : 0;
 
     if (resp >= 0)
