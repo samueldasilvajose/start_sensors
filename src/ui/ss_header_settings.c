@@ -15,7 +15,8 @@ ss_hsettings_context_new()
     SsHSettingsContext *ctx = g_malloc0(sizeof(SsHSettingsContext));
     if (!ctx)
     {
-        ss_send_notify(SS_ERROR_FATAL, "não foi possivel alocar memória para o contexto de configurações");
+        ss_send_notify_parse(SS_ERROR_FATAL,
+            "não foi possivel alocar memória para o contexto de configurações");
     }
     return ctx;
 }

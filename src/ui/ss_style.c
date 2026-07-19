@@ -18,7 +18,7 @@ set_image_scaled(SsWallpaperContext *ctx)
     }
     else
     {
-        ss_send_notify(SS_ERROR_ERROR, "não foi possivel alterar o wallpaper");
+        ss_send_notify_parse(SS_ERROR_ERROR, "não foi possivel alterar o wallpaper");
     }
 }
 

@@ -4,16 +4,19 @@
 typedef struct _GtkApplication GtkApplication;
 typedef struct _SsMainWindowContext SsMainWindowContext;
 
+typedef struct _SsNotificationContext SsNotificationContext;
+typedef struct _SsHistoryNotifyContext SsHistoryNotifyContext;
 typedef struct _SsHeaderContext SsHeaderContext;
-typedef struct _SsBodyContext SsBodyContext;
+typedef struct _SsDashboardContext SsDashboardContext;
 
 typedef struct
 {
     GtkApplication *app;
     SsMainWindowContext *window;
 
-    SsHeaderContext *header;
-    SsBodyContext   *body;
+    SsDashboardContext      *dashboard;
+    SsNotificationContext   *notify;
+    SsHistoryNotifyContext  *history_notify;
 } SsAppContext;
 
 void ss_app_context_free(SsAppContext **ctx);

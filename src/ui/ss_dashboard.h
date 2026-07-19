@@ -1,10 +1,12 @@
-#ifndef SS_HEADER_H
-#define SS_HEADER_H
+#ifndef SS_FOOTER_H
+#define SS_FOOTER_H
 
 #include "ss_main.h"
-#include "ss_style.h"
 #include "ss_types.h"
-#include "ss_header_settings.h"
+#include "ss_style.h"
+
+#define IMG_SENSORS_ON  SS_PATH_GUI"/../../assets/images/power_sensors.png"
+#define IMG_SENSORS_OFF  SS_PATH_GUI"/../../assets/images/poweroff_sensors.png"
 
 #define SS_STACK_COMPONENTS_LIST(X) \
     X(OK,       "ok")              \
@@ -34,37 +36,30 @@ typedef struct
     SsStackComponent components[SS_STACK_COMPONENTS_COUNT];
 } SsStackContext;
 
-typedef struct
+typedef enum
 {
-    unsigned int timeout_id;
-    GtkWidget *noti_over;
-    SsWidgetStyleContext noti_label;
-} SsNotificationContext;
+    SS_THEME_POWERON,
+    SS_THEME_POWEROFF,
+    SS_THEME_COUNT
+} SsThemeType;
 
-typedef struct
+typedef struct _SsDashboardContext
 {
-    GtkWidget *popover;
-    GtkWidget *text_view;
-    GtkTextBuffer *text_buffer;
-} SsHistoryNotifyContext;
-
-typedef struct _SsHeaderContext
-{
-    GtkWidget *header;
+    GtkWidget *page;
+    SsTheme body[SS_THEME_COUNT];
+    SsThemeType current_theme;
     SsStackContext stack;
-    SsHSettingsContext settings;
-    SsNotificationContext notification;
-    SsHistoryNotifyContext history_notify;
-} SsHeaderContext;
+} SsDashboardContext;
 
-void ss_create_header(SsHeaderContext **header_ctx, SsMainWindowContext *win_ctx);
-void ss_show_notify(SsController *ctl, gpointer data, gpointer user_data);
+SsDashboardContext *ss_dashboard_context_new();
+void ss_dashboard_context_free(SsDashboardContext **ctx);
+void set_default_state(SsDashboardContext *ctx);
+
+void ss_create_dashboard(SsDashboardContext **dashboard_ctx, SsMainWindowContext *win_ctx);
+int ss_set_power_theme(SsDashboardContext *ctx, int theme, const char *msg);
 void ss_define_item_in_stack(SsController *ctl, gpointer data, gpointer user_data);
-void ss_header_context_free(SsHeaderContext **ctx);
-void ss_write_notification_viewer(SsController *ctl, gpointer data, gpointer user_data);
 
-SsHeaderContext *ss_header_context_new();
-
+gboolean ss_desired_power_status(gpointer data);
 
 static inline const char *
 ss_stack_components_to_string(SsStackComponentsType type)
@@ -83,4 +78,4 @@ ss_stack_components_to_string(SsStackComponentsType type)
     return _ss_stack_components_strings[type];
 }
 
-#endif //SS_HEADER_H
+#endif // SS_FOOTER_H

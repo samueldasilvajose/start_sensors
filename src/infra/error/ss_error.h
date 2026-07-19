@@ -1,6 +1,8 @@
 #ifndef SS_ERROR_H
 #define SS_ERROR_H
 
+#define ERRNO_MSG_MAX 512
+
 #define SS_ERROR_LIST(X)           \
     X(OK,       "")                \
     X(INFO,     "INFO")            \
@@ -28,7 +30,7 @@ static const char *const _ss_error_strings[] =
 typedef struct
 {
     SsErrorLevel err;
-    char msg[512];
+    char msg[ERRNO_MSG_MAX];
 }SsNotifyMsg;
 
 

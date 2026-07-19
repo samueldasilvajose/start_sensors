@@ -55,6 +55,7 @@ ss_exec_poweron()
        }
     }
 
+    int use_read = global_configs.power[SS_READ_STATE].to_use;
     ss_power_t ref = *ptr;
     ss_unlock_check_ips_mutex();
     
@@ -62,7 +63,8 @@ ss_exec_poweron()
     {
         if (!ss_send_frame(ref.sockfd, &ref.msg))
         {
-            atomic_store(&power_state, 1);
+            if (!use_read)
+                atomic_store(&power_state, 1);
             return 0;
         }
     }
@@ -86,6 +88,7 @@ ss_exec_poweroff()
         }
     }
 
+    int use_read = global_configs.power[SS_READ_STATE].to_use;
     ss_power_t ref = *ptr;
     ss_unlock_check_ips_mutex();
     
@@ -93,7 +96,8 @@ ss_exec_poweroff()
     {
         if (!ss_send_frame(ref.sockfd, &ref.msg))
         {
-            atomic_store(&power_state, 0);
+            if (!use_read)
+                atomic_store(&power_state, 0);
             return 0;
         }
     }
@@ -135,7 +139,7 @@ ss_exec_read_state()
     ss_unlock_check_ips_mutex();
 
     fd_set readfds;
-    struct timeval timeout = {.tv_sec = 1, .tv_usec = 1000};
+    struct timeval timeout = {.tv_sec = 1, .tv_usec = 2000};
 
     FD_ZERO(&readfds);
     FD_SET(ref.sockfd, &readfds);
@@ -156,18 +160,20 @@ ss_exec_read_state()
         return -1;
     }
     
-    int resp = (ss_recv_frame(ref.sockfd, &ref.msg) == 0 ? (ref.msg.data[0] & mask_poweron) : -1);
-    if (resp > 0)
+    int resp = -1;
+    struct can_frame msg = {0};
+    if (ss_recv_last_frame(ref.sockfd, &msg) == 0 && msg.can_id == ref.msg.can_id)
+        resp = (msg.data[0] & mask_poweron) ? 1 : 0;
+
+    if (resp >= 0)
     {
-        atomic_store(&power_state, 1);
-    }
-    else if (resp == 0)
-    {
-        atomic_store(&power_state, 0);
+        atomic_store(&power_state, resp);
     }
     else
     {
-       atomic_store(&power_state, -1);
+        atomic_store(&power_state, -1);
+        ss_publish_error(SS_ERROR_ERROR, "não foi encontrado a mensagem de status (msg: %x, frame: 0x0%x)",
+            ref.msg.can_id, ref.msg.data[0]);
     }
     
     return resp;
@@ -262,7 +268,7 @@ ss_edit_ip(size_t index, ss_sensor_t *ip)
     }
     
     ss_lock_check_ips_mutex();
-    if (index >= global_configs.sensors.size)
+    if ((short) index >= global_configs.sensors.size)
         global_configs.sensors.size++;
     
     global_configs.sensors.ips[index] = *ip;

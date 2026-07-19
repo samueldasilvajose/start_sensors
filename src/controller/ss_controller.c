@@ -1,7 +1,7 @@
-#include "../ui/ss_body.h"
 #include "../ui/ss_main.h"
 #include "../ui/ss_signal.h"
-#include "../ui/ss_header.h"
+#include "../ui/ss_notify.h"
+#include "../ui/ss_dashboard.h"
 #include "../ui/ss_ui_error.h"
 
 #include "../core/ss_core_types.h"
@@ -15,6 +15,8 @@ static gint in_exec_rd_can = 0;
 static GMutex check_ips_mutex;
 static SsController *ss_controller = NULL;
 
+
+static void send_notify(int critical_level, const char *msg);
 
 // ================== frontend -> backend ================== //
 void
@@ -55,27 +57,60 @@ ss_poweroff_sensors()
 }
 
 
+void
+ss_send_command_thread(GAsyncQueue *queue, ss_command_thread_t cmd)
+{
+    if (!queue || (unsigned) cmd >= SS_COMMAND_THREAD_COUNT)
+        return;
+    
+    ss_command_thread_t *lcmd = g_new(ss_command_thread_t, 1);
+    *lcmd = cmd;
+
+    g_async_queue_push(queue, (gpointer) lcmd);
+}
+
+
 static gpointer
 read_can_state(gpointer data)
 {
-    (void) data;
-    ss_exec_read_state();
-    g_atomic_int_set(&in_exec_rd_can, 0);
+    GAsyncQueue *queue = data;
+
+    while (TRUE)
+    {
+        ss_command_thread_t *cmd = g_async_queue_pop(queue);
+        ss_command_thread_t lcmd = *cmd;
+        g_free(cmd);
+        
+        if (lcmd == SS_COMMAND_THREAD_REPEAT)
+        {
+            ss_exec_read_state();
+        }
+        else if (lcmd == SS_COMMAND_THREAD_CLOSE)
+        {
+            g_atomic_int_set(&in_exec_rd_can, 0);
+            break;
+        }
+    }
+
     return NULL;
 }
 
 
-void
-ss_read_can_state()
+GAsyncQueue *
+ss_read_can_thread_start()
 {
+    static GAsyncQueue *queue = NULL;
+
     if (!g_atomic_int_compare_and_exchange(&in_exec_rd_can, 0, 1))
-    {
-        ss_send_notify(SS_ERROR_WARNING, "Checagem do status já em andamento");
-        return;
-    }
+        return queue;
+
+    if (!queue)
+        queue = g_async_queue_new();
     
-    GThread *thread = g_thread_new("read_can_state", read_can_state, NULL);
+    GThread *thread = g_thread_new("read_can_state", read_can_state, queue);
     g_thread_unref(thread);
+
+    return queue;
 }
 
 
@@ -184,15 +219,13 @@ ss_send_stack_msg_ts(int err_user)
 }
 
 
-void
-ss_send_notify(int critical_level, const char *msg)
+static void
+send_notify(int critical_level, const char *msg)
 {
     static SsNotifyMsg noti = {0};
     
     if ((unsigned) critical_level >= SS_ERROR_COUNT || !msg)
-    {
         return;
-    }
     
     noti.err = critical_level;
     g_strlcpy(noti.msg, msg, (sizeof(noti.msg)/sizeof(noti.msg[0])));
@@ -211,7 +244,7 @@ static gboolean
 send_notify_ts(gpointer data)
 {
     SsNotifyMsg *noti = data;
-    ss_send_notify(noti->err, noti->msg);
+    send_notify(noti->err, noti->msg);
     g_free(noti);
 
     return FALSE;
@@ -224,6 +257,32 @@ ss_send_notify_ts(int critical_level, const char *msg)
     data->err = critical_level;
     g_strlcpy(data->msg, msg, (sizeof(data->msg)/sizeof(data->msg[0])));
     g_idle_add(send_notify_ts, (gpointer) data);
+}
+
+
+// ================== frontend -> frontend ================== //
+void
+ss_send_notify_parse(int critical_level, const char *fmt, ...)
+{
+    if (!fmt)
+        return;
+
+    int lcritical_level = critical_level;
+    if ((unsigned) lcritical_level > SS_ERROR_COUNT)
+    {
+        lcritical_level = SS_ERROR_WARNING;
+        ss_send_notify_parse(SS_ERROR_WARNING, "critical_level (%d) invalido. (max value %d)",
+                                critical_level, SS_ERROR_COUNT);
+    }
+    
+    va_list args;
+    va_start(args, fmt);
+
+    char buf[ERRNO_MSG_MAX] = {0};
+    vsnprintf(buf, ERRNO_MSG_MAX, fmt, args);
+    va_end(args);
+
+    send_notify(lcritical_level, buf);
 }
 
 

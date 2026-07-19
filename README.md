@@ -1,6 +1,5 @@
 # start_sensors
 
-
 ```
 sudo modprobe vcan
 sudo ip link add dev vcan0 type vcan
