@@ -1,7 +1,10 @@
 #ifndef SS_HEADER_SETTINGS_H
 #define SS_HEADER_SETTINGS_H
 
+#include "ss_main.h"
+#include "ss_style.h"
 #include "ss_types.h"
+
 #include "../core/ss_core_types.h"
 
 typedef enum
@@ -39,11 +42,10 @@ typedef struct
     SsWidgetStyleContext label;
 } SsSettingsClass;
 
-typedef struct
+typedef struct _SsHSettingsContext
 {
-    GtkWidget *button;
-    GtkWidget *box_settings;
-    GtkWidget *overlay_settings;
+    GtkWidget *page;
+    GtkWidget *box_sensors;
     GtkWidget *popover_settings; 
     SsSettingsClass list_configs[FlagSettingMax];
 } SsHSettingsContext;
@@ -52,6 +54,6 @@ typedef struct
 SsHSettingsContext *ss_hsettings_context_new();
 void ss_hsettings_context_free(SsHSettingsContext **ctx);
 
-void ss_create_box_settings(SsHSettingsContext *ctx, GtkWidget *button, const SsGeometryWindow *geo_win);
+void ss_create_settings(SsHSettingsContext **ctx, SsMainWindowContext *win_ctx);
 
 #endif //SS_HEADER_SETTINGS_H

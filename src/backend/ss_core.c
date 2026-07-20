@@ -254,7 +254,7 @@ ss_rm_ip(size_t index)
 }
 
 
-inline void
+void
 ss_edit_ip(size_t index, ss_sensor_t *ip)
 {
     if (index == SIZE_MAX || index > IPS_MAX || !ip)
@@ -276,7 +276,7 @@ ss_edit_ip(size_t index, ss_sensor_t *ip)
 }
 
 
-inline void
+void
 ss_edit_can(ss_power_index_t index, ss_power_t *can)
 {
     if ((unsigned) index >= SS_POWER_COUNT || !can)
@@ -299,10 +299,10 @@ static void
 write_elements_can(FILE *file_w, ss_tag_yaml_t tag, ss_power_t *src)
 {
     static char *fmt = "\
-\t%s: %d\n\
-\t%s: %x\n\
-\t%s: %x\n\
-\t%s: %s\n";
+  %s: %d\n\
+  %s: %x\n\
+  %s: %x\n\
+  %s: %s\n";
     char buf[512];
     snprintf(buf, SS_AS(buf), fmt,
              ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_CAN_TO_USE), src->to_use,
@@ -317,10 +317,10 @@ static void
 write_elements_ips(FILE *file_w, ss_sensor_t *src)
 {
     static char *fmt = "\
-\t\t- %s: %d\n\
-\t\t- %s: %s\n\
-\t\t- %s: %s\n\
-\t\t- %s: %d\n";
+    - %s: %d\n\
+    - %s: %s\n\
+    - %s: %s\n\
+    - %s: %d\n";
 
     char buf[512];
 
@@ -359,10 +359,12 @@ ss_save_fconfigs()
     fprintf(file_w, "%s:\n", ss_tag_yaml_to_string(SS_TAG_YAML_READ_STATE));
     write_elements_can(file_w, SS_READ_STATE, &global_configs.power[SS_READ_STATE]);
 
+    fflush(file_w);
+
     fprintf(file_w, "%s:\n", ss_tag_yaml_to_string(SS_TAG_YAML_SENSORS));
-    for (short i = 1; i < global_configs.sensors.size; i++)
+    for (short i = 1; i < global_configs.sensors.size + 1; i++)
     {
-        fprintf(file_w, "\tsensor%d:\n", i);
+        fprintf(file_w, "  sensor%d:\n", i);
         write_elements_ips(file_w, &global_configs.sensors.ips[i-1]);   
     }
     
@@ -457,13 +459,13 @@ read_data_ips(ss_sensor_t *dst,  yaml_event_t *event, yaml_parser_t *parser)
                 if (event->type == YAML_SCALAR_EVENT)
                 {
                     value = (char *) event->data.scalar.value;
-                    if (strcmp(value, ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_CAN_TO_USE)) == 0)
+                    if (strcmp(value, ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_IP_TO_USE)) == 0)
                     {
                         yaml_event_delete(event), yaml_parser_parse(parser, event);
 
                         int dst_to_use;
                         ss_convert_str_to_num(&dst_to_use, (const char *) event->data.scalar.value, INT);
-                        dst->to_use = dst_to_use ? true : false;
+                        dst[index-1].to_use = (dst_to_use ? true : false);
                         ntoken++;
                     }
                     else if (strcmp(value, ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_IP_ID)) == 0)

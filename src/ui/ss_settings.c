@@ -1,8 +1,7 @@
 #include <gtk/gtk.h>
 
-#include "ss_header.h"
 #include "ss_ui_error.h"
-#include "ss_header_settings.h"
+#include "ss_settings.h"
 
 #include "../core/ss_yaml_types.h"
 #include "../infra/utils/ss_utils.h"
@@ -56,8 +55,14 @@ on_switch_changed(GObject *switch_widget, GParamSpec *pspec, gpointer data)
     (void) pspec;
 
     FlagAndConfig *ptr = (FlagAndConfig *) data;
-    bool *state = (ptr->flag == FlagSettingIp ? &ptr->sh_ip.to_use : &ptr->sh_power.to_use);
+
+    bool flag =(ptr->flag == FlagSettingIp);
+    bool *state = (flag ? &ptr->sh_ip.to_use : &ptr->sh_power.to_use);
+
     *state = gtk_switch_get_active(GTK_SWITCH(switch_widget));
+
+    (flag) ? ss_controller_edit_ip(ptr->identifier, &ptr->sh_ip) :
+        ss_controller_edit_can(ptr->identifier, &ptr->sh_power);
 }
 
 
@@ -90,6 +95,13 @@ updat_sensor_tooltip_text_in_frame(GtkWidget *box, FlagAndConfig *data)
              ss_subtag_yaml_to_string(SS_TAG_YAML_SENSORS, SS_SUBTAG_YAML_IP_IP), data->sh_ip.ip,
              ss_subtag_yaml_to_string(SS_TAG_YAML_SENSORS, SS_SUBTAG_YAML_IP_CRITICAL_LEVEL), data->sh_ip.critical_level);
     gtk_widget_set_tooltip_text(box, buf);
+}
+
+
+static void
+creat_edit_setting()
+{
+
 }
 
 
@@ -189,8 +201,12 @@ create_settings(GtkWidget *box_settings, const char *title, SsSettingsClass *set
     GtkWidget *config = gtk_button_new_from_icon_name("pan-down-symbolic", GTK_ICON_SIZE_BUTTON);
     gtk_box_pack_start(GTK_BOX(header_box), config, FALSE, FALSE, 0);
 
+    GtkWidget *scroll_settings = gtk_scrolled_window_new(NULL, NULL);
+    gtk_container_add(GTK_CONTAINER(box_settings), scroll_settings);
+    gtk_widget_set_size_request(scroll_settings, -1, 45*4);
+
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_box_pack_start(GTK_BOX(box_settings), box, FALSE, FALSE, 0);
+    gtk_container_add(GTK_CONTAINER(scroll_settings), box);
 
     SsWidgetStyleContext edge_box = {.style = SS_STYLE_EG_WHITE, .widget = box};
     ss_update_style_widget(&edge_box);
@@ -227,13 +243,14 @@ create_cans_settings(GtkWidget *box_settings, const char *name_field, SsSettings
 static void
 create_sensors_settings(GtkWidget *box_settings, const char *name_field, SsSettingsClass *conf_fields)
 {
-    create_settings(box_settings, name_field, conf_fields);
     ss_configs_t configs;
-
     ss_controller_get_configs(&configs);
+
+    create_settings(box_settings, name_field, conf_fields);
 
     for (short i = 0; i < conf_fields->size; i++)
     {
+        printf("%d\n", configs.sensors.ips[i].to_use);
         conf_fields->field_forms[i].conf.flag = FlagSettingIp;
         conf_fields->field_forms[i].conf.identifier = i;
         conf_fields->field_forms[i].conf.sh_ip = configs.sensors.ips[i];
@@ -252,53 +269,43 @@ add_new_sensor(GtkButton *button, gpointer data)
 
 
 void
-ss_create_box_settings(SsHSettingsContext *ctx, GtkWidget *button, const SsGeometryWindow *geo_win)
+ss_create_settings(SsHSettingsContext **ctx, SsMainWindowContext *win_ctx)
 {
-    ctx = ss_hsettings_context_new();
-    ctx->button = button;
+    SsHSettingsContext *st_ctx = ss_hsettings_context_new();
+    *ctx = st_ctx;
 
-    //base
-    ctx->popover_settings = gtk_popover_new(button);
-    gtk_popover_set_position(GTK_POPOVER(ctx->popover_settings), GTK_POS_BOTTOM);
-    gtk_widget_set_size_request(ctx->popover_settings, geo_win->width*0.6, geo_win->height*0.99);
-    g_signal_connect(button, "clicked", G_CALLBACK(toggle_viewer_settings), ctx);
+    const char *np = ss_get_name_page(SS_NAME_PAGE_SETTINGS);
 
-    GtkWidget *scroll_settings = gtk_scrolled_window_new(NULL, NULL);
-    gtk_container_add(GTK_CONTAINER(ctx->popover_settings), scroll_settings);
+    GtkWidget *label_np = gtk_label_new(np);
+    gtk_list_box_insert(GTK_LIST_BOX(win_ctx->sidebar->list), label_np, SS_NAME_PAGE_SETTINGS);
 
-    ctx->overlay_settings = gtk_overlay_new();
-    gtk_container_add(GTK_CONTAINER(scroll_settings), ctx->overlay_settings);
-
-    ctx->box_settings = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_container_add(GTK_CONTAINER(ctx->overlay_settings), ctx->box_settings);
+    st_ctx->page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+    gtk_stack_add_named(GTK_STACK(win_ctx->sidebar->stack),
+                            st_ctx->page, np);
 
     //header
     GtkWidget *header_settings = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-    gtk_box_pack_start(GTK_BOX(ctx->box_settings), header_settings, FALSE, FALSE, 10);
-
-    GtkWidget *title = gtk_label_new("Settings");
-    gtk_box_pack_start(GTK_BOX(header_settings), title, TRUE, TRUE, 10);
+    gtk_box_pack_start(GTK_BOX(st_ctx->page), header_settings, FALSE, FALSE, 10);
 
     GtkWidget *new_sensor = gtk_button_new_with_label("New sensor");
-    gtk_box_pack_start(GTK_BOX(header_settings), new_sensor, FALSE, FALSE, 15);
-    gtk_widget_set_valign(new_sensor, GTK_ALIGN_END);
+    gtk_box_pack_start(GTK_BOX(header_settings), new_sensor, TRUE, TRUE, 15);
+    gtk_widget_set_halign(new_sensor, GTK_ALIGN_END);
 
-    g_signal_connect(new_sensor, "clicked", G_CALLBACK(add_new_sensor), (gpointer) &ctx->list_configs[FlagSettingIp]);
+    g_signal_connect(new_sensor, "clicked", G_CALLBACK(add_new_sensor), (gpointer) &st_ctx->list_configs[FlagSettingIp]);
 
     //body
     GtkWidget *body_settings = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_box_pack_start(GTK_BOX(ctx->box_settings), body_settings, FALSE, FALSE, 0);
-    gtk_widget_set_valign(new_sensor, GTK_ALIGN_CENTER);
+    gtk_box_pack_start(GTK_BOX(st_ctx->page), body_settings, FALSE, FALSE, 0);
 
-    ctx->list_configs[FlagSettingCan].size = SS_POWER_COUNT;
-    ctx->list_configs[FlagSettingCan].field_forms = (SsFieldForms *) g_malloc0(sizeof(SsFieldForms) * SS_POWER_COUNT);
-    ss_test_alloc(ctx->list_configs[FlagSettingCan].field_forms);
-    create_cans_settings(ctx->box_settings, "Power", &ctx->list_configs[FlagSettingCan]);
+    st_ctx->list_configs[FlagSettingCan].size = SS_POWER_COUNT;
+    st_ctx->list_configs[FlagSettingCan].field_forms = (SsFieldForms *) g_malloc0(sizeof(SsFieldForms) * SS_POWER_COUNT);
+    ss_test_alloc(st_ctx->list_configs[FlagSettingCan].field_forms);
+    create_cans_settings(body_settings, "Power", &st_ctx->list_configs[FlagSettingCan]);
 
     ss_configs_t configs = {0};
     ss_controller_get_configs(&configs);
-    ctx->list_configs[FlagSettingIp].size = configs.sensors.size;
-    ctx->list_configs[FlagSettingIp].field_forms = (SsFieldForms *) g_malloc0(sizeof(SsFieldForms) * configs.sensors.size);
-    ss_test_alloc(ctx->list_configs[FlagSettingIp].field_forms);
-    create_sensors_settings(ctx->box_settings, "Sensors", &ctx->list_configs[FlagSettingIp]);
+    st_ctx->list_configs[FlagSettingIp].size = configs.sensors.size;
+    st_ctx->list_configs[FlagSettingIp].field_forms = (SsFieldForms *) g_malloc0(sizeof(SsFieldForms) * configs.sensors.size);
+    ss_test_alloc(st_ctx->list_configs[FlagSettingIp].field_forms);
+    create_sensors_settings(body_settings, "Sensors", &st_ctx->list_configs[FlagSettingIp]);
 }

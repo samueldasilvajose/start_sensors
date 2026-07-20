@@ -6,7 +6,7 @@ typedef struct _SsMainWindowContext SsMainWindowContext;
 
 typedef struct _SsNotificationContext SsNotificationContext;
 typedef struct _SsHistoryNotifyContext SsHistoryNotifyContext;
-typedef struct _SsHeaderContext SsHeaderContext;
+typedef struct _SsHSettingsContext SsHSettingsContext;
 typedef struct _SsDashboardContext SsDashboardContext;
 
 typedef struct
@@ -15,6 +15,7 @@ typedef struct
     SsMainWindowContext *window;
 
     SsDashboardContext      *dashboard;
+    SsHSettingsContext      *settings;
     SsNotificationContext   *notify;
     SsHistoryNotifyContext  *history_notify;
 } SsAppContext;

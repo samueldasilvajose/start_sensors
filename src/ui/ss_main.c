@@ -3,6 +3,7 @@
 #include "ss_style.h"
 #include "ss_notify.h"
 #include "ss_ui_error.h"
+#include "ss_settings.h"
 #include "ss_dashboard.h"
 #include "ss_app_context.h"
 #include "ss_history_notify.h"
@@ -54,6 +55,8 @@ generate_main_window_geometry(SsMainWindowContext *win_ctx)
     win_ctx->geo.y = geometry.y;
     win_ctx->geo.width = geometry.width * 0.4;
     win_ctx->geo.height = geometry.height * 0.4;
+
+    win_ctx->geo.width += win_ctx->geo.width * 0.1;
 }
 
 
@@ -117,7 +120,7 @@ create_sidebar(SsMainWindowContext *ctx)
     ctx->sidebar = sb;
 
     sb->width.mode_hidden = ctx->geo.width * 0.03;
-    sb->width.mode_visible = ctx->geo.width * 0.3;
+    sb->width.mode_visible = ctx->geo.width * 0.2;
 
     sb->panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_size_request(sb->panel, sb->width.mode_hidden, -1);
@@ -206,6 +209,7 @@ init_main_window (GtkApplication *app, gpointer  data)
     
     ss_create_dashboard(&app_ctx->dashboard, ctx);
     ss_create_history_notify(&app_ctx->history_notify, ctx);
+    ss_create_settings(&app_ctx->settings, ctx);
 
     gtk_widget_show_all(ctx->main_win);
 
