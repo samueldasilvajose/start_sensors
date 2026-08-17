@@ -24,6 +24,14 @@ set_image_scaled(SsWallpaperContext *ctx)
 
 
 void
+ss_setup_form_label(GtkWidget *label)
+{
+    gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+    gtk_widget_set_margin_start(label, 10);
+}
+
+
+void
 ss_update_style_widget(SsWidgetStyleContext *ctx)
 {
     GtkStyleContext *gtk_ctx = gtk_widget_get_style_context(ctx->widget);
@@ -55,9 +63,10 @@ ss_init_style()
         ".%s { color: #cc0000; } ",
         ".%s { color: black; } ",
         ".%s { color: #00aa00; } ",
+        ".%s { color: #ffffff; } ",
         ".%s { background-color: #cccccc; } ",
         ".%s { background-color: white; }",
-        ".%s {  border: 1px solid #707070; }",
+        ".%s { border: 1px solid #707070; }",
     };
 
     gint len_buf = 0;

@@ -27,9 +27,31 @@ typedef struct
 #define sh_ip SHconfig.ip
 #define sh_power SHconfig.power
 
+typedef struct
+{
+    GtkWidget *entry;
+    SsWidgetStyleContext label;
+} SsInsertForms;
 
 typedef struct
 {
+    GtkWidget *sw;
+    SsWidgetStyleContext label;
+} SsSelectForms;
+
+typedef struct
+{
+    short insert_size;
+    short select_size;
+    GtkWidget *grid;
+    GtkWidget *popover;
+    SsInsertForms *insert;
+    SsSelectForms *select;
+} SsForms;
+
+typedef struct
+{
+    SsForms forms;
     FlagAndConfig conf;
     SsWidgetStyleContext label;
 } SsFieldForms;
@@ -39,6 +61,7 @@ typedef struct
     short size;
     GtkWidget *grid;
     SsFieldForms *field_forms;
+    SsGeometryWindow geo;
     SsWidgetStyleContext label;
 } SsSettingsClass;
 
@@ -46,7 +69,6 @@ typedef struct _SsHSettingsContext
 {
     GtkWidget *page;
     GtkWidget *box_sensors;
-    GtkWidget *popover_settings; 
     SsSettingsClass list_configs[FlagSettingMax];
 } SsHSettingsContext;
 

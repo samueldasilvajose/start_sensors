@@ -1,34 +1,74 @@
 poweron:
   to_use: 1
-  frame: 0X01
+  frame: 1
   message: 220
   interface: vcan0
 
 poweroff:
   to_use: 1
-  frame: 0X00
+  frame: 0
   message: 220
   interface: vcan0
 
 read_status:
-  to_use: 1
-  frame: 0X01
+  to_use: 0
+  frame: 1
   message: 221
   interface: vcan0
 
 sensors:
   sensor1:
-    - to_use: 1
-    - id: lidar0
-    - ip: 192.168.1.16
-    - critical_level: 3
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
   sensor2:
-    - to_use: 1
-    - id: lidar5
-    - ip: 192.168.1.16
-    - critical_level: 2
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
   sensor3:
     - to_use: 0
-    - id: imu
-    - ip: 192.168.1.111
-    - critical_level: 3
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor4:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor5:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor6:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor7:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor8:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor9:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor10:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1
+  sensor11:
+    - to_use: 0
+    - id: none
+    - ip: 0
+    - critical_level: -1

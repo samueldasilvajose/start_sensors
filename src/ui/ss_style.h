@@ -7,6 +7,7 @@
     X(RED,      "red")           \
     X(BLACK,    "black")         \
     X(GREEN,    "green")         \
+    X(WHITE,    "white")      \
     X(BG_GRAY,  "bg_gray")       \
     X(BG_WHITE, "bg_white")      \
     X(EG_WHITE, "edge_white")    
@@ -46,6 +47,7 @@ typedef struct
 void ss_init_style();
 void ss_apply_theme(SsTheme *theme);
 void set_image_scaled(SsWallpaperContext *ctx);
+void ss_setup_form_label(GtkWidget *label);
 void ss_update_style_widget(SsWidgetStyleContext *ctx);
 
 
