@@ -1,18 +1,22 @@
 #include <yaml.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
+#include <sys/select.h>
 
 #include "ss_can.h"
 #include "ss_core.h"
 #include "../core/ss_yaml_types.h"
 #include "../infra/utils/ss_utils.h"
 #include "../controller/ss_controller.h"
+#include "../infra/error/ss_error_message.h"
 
 
 static ss_configs_t global_configs = {0};
 
-static int power_state = 0;
+static atomic_int power_state = -1;
 static ss_error_mask_t level_to_notify = SS_ERROR_ERROR_MASK;
 
 static char *fconfigs = NULL;
@@ -39,22 +43,30 @@ ss_init_can()
 int
 ss_exec_poweron()
 {
+    ss_lock_check_ips_mutex();
     ss_power_t *ptr = &global_configs.power[SS_POWER_ON];
     if (ptr->sockfd < 0)
     {
        ptr->sockfd = ss_connect_can(ptr->can_interface);
        if (ptr->sockfd < 0)
        {
+            ss_unlock_check_ips_mutex();
             return -1;
        }
     }
-    
-    if (!power_state)
-    {
-        ss_send_frame(ptr->sockfd, &ptr->msg);
-        power_state = 1;
 
-        return 0;
+    int use_read = global_configs.power[SS_READ_STATE].to_use;
+    ss_power_t ref = *ptr;
+    ss_unlock_check_ips_mutex();
+    
+    if (atomic_load(&power_state) <= 0)
+    {
+        if (!ss_send_frame(ref.sockfd, &ref.msg))
+        {
+            if (!use_read)
+                atomic_store(&power_state, 1);
+            return 0;
+        }
     }
 
     return 1;
@@ -64,22 +76,30 @@ ss_exec_poweron()
 int
 ss_exec_poweroff()
 {
+    ss_lock_check_ips_mutex();
     ss_power_t *ptr = &global_configs.power[SS_POWER_OFF];
     if (ptr->sockfd < 0)
     {
         ptr->sockfd = ss_connect_can(ptr->can_interface);
         if (ptr->sockfd < 0)
         {
+            ss_unlock_check_ips_mutex();
             return -1;
         }
     }
-    
-    if (power_state)
-    {
-        ss_send_frame(ptr->sockfd, &ptr->msg);
-        power_state = 0;
 
-        return 0;
+    int use_read = global_configs.power[SS_READ_STATE].to_use;
+    ss_power_t ref = *ptr;
+    ss_unlock_check_ips_mutex();
+    
+    if (atomic_load(&power_state))
+    {
+        if (!ss_send_frame(ref.sockfd, &ref.msg))
+        {
+            if (!use_read)
+                atomic_store(&power_state, 0);
+            return 0;
+        }
     }
 
     return 1;
@@ -87,21 +107,75 @@ ss_exec_poweroff()
 
 
 int
+ss_get_sensores_state()
+{
+    return atomic_load(&power_state);
+}
+
+
+int
 ss_exec_read_state()
 {
+    ss_lock_check_ips_mutex();
     ss_power_t *ptr = &global_configs.power[SS_READ_STATE];
+    if (!ptr->to_use)
+    {
+        ss_unlock_check_ips_mutex();
+        return -1;
+    }
+    
     if (ptr->sockfd < 0)
     {
         ptr->sockfd = ss_connect_can(ptr->can_interface);
         if (ptr->sockfd < 0)
         {
+            ss_unlock_check_ips_mutex();
             return -1;
         }
     }
 
+    ss_power_t ref = *ptr;
     unsigned char mask_poweron = global_configs.power[SS_POWER_ON].msg.data[0];
-    int resp = (ss_recv_frame(ptr->sockfd, &ptr->msg) == 0 ? (ptr->msg.data[0] & mask_poweron) : -1);
+    ss_unlock_check_ips_mutex();
 
+    fd_set readfds;
+    struct timeval timeout = {.tv_sec = 1, .tv_usec = 2000};
+
+    FD_ZERO(&readfds);
+    FD_SET(ref.sockfd, &readfds);
+
+    errno = 0;
+    int ret = select(ref.sockfd + 1, &readfds, NULL, NULL, &timeout);
+    int err = errno;
+
+    if (ret < 0)
+    {
+        ss_publish_error(SS_ERROR_CRITICAL, "Recv failed (%s)", strerror(err));
+        return -1;
+    }
+
+    if (ret == 0 || !FD_ISSET(ref.sockfd, &readfds))
+    {
+        ss_publish_error(SS_ERROR_CRITICAL, "Time expired, message not received");
+        return -1;
+    }
+    
+    int resp = -1;
+    struct can_frame msg = {0};
+    if (ss_recv_frame_filter_msg(ref.sockfd, ref.msg.can_id, &msg) == 0)
+        resp = (msg.data[0] & mask_poweron) ? 1 : 0;
+
+    if (resp >= 0)
+    {
+        atomic_store(&power_state, resp);
+    }
+    else
+    {
+        atomic_store(&power_state, -1);
+        ss_publish_error(SS_ERROR_ERROR, "não foi encontrado a mensagem de status (msg: %x, frame: 0x0%x)",
+            ref.msg.can_id, ref.msg.data[0]);
+    }
+    
     return resp;
 }
 
@@ -180,10 +254,10 @@ ss_rm_ip(size_t index)
 }
 
 
-inline void
+void
 ss_edit_ip(size_t index, ss_sensor_t *ip)
 {
-    if (index == SIZE_MAX || index > IPS_MAX  - 1 || !ip)
+    if (index == SIZE_MAX || index > IPS_MAX || !ip)
     {
         if (ss_error_get_err_level(SS_ERROR_ERROR, level_to_notify) > 0)
         {
@@ -194,12 +268,15 @@ ss_edit_ip(size_t index, ss_sensor_t *ip)
     }
     
     ss_lock_check_ips_mutex();
+    if ((short) index >= global_configs.sensors.size)
+        global_configs.sensors.size++;
+    
     global_configs.sensors.ips[index] = *ip;
     ss_unlock_check_ips_mutex();
 }
 
 
-inline void
+void
 ss_edit_can(ss_power_index_t index, ss_power_t *can)
 {
     if ((unsigned) index >= SS_POWER_COUNT || !can)
@@ -212,7 +289,9 @@ ss_edit_can(ss_power_index_t index, ss_power_t *can)
         return;
     }
     
+    ss_lock_check_ips_mutex();
     global_configs.power[index] = *can;
+    ss_unlock_check_ips_mutex();
 }
 
 
@@ -220,10 +299,10 @@ static void
 write_elements_can(FILE *file_w, ss_tag_yaml_t tag, ss_power_t *src)
 {
     static char *fmt = "\
-\t%s: %d\n\
-\t%s: %x\n\
-\t%s: %x\n\
-\t%s: %s\n";
+  %s: %d\n\
+  %s: %x\n\
+  %s: %x\n\
+  %s: %s\n";
     char buf[512];
     snprintf(buf, SS_AS(buf), fmt,
              ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_CAN_TO_USE), src->to_use,
@@ -238,10 +317,10 @@ static void
 write_elements_ips(FILE *file_w, ss_sensor_t *src)
 {
     static char *fmt = "\
-\t\t- %s: %d\n\
-\t\t- %s: %s\n\
-\t\t- %s: %s\n\
-\t\t- %s: %d\n";
+    - %s: %d\n\
+    - %s: %s\n\
+    - %s: %s\n\
+    - %s: %d\n";
 
     char buf[512];
 
@@ -280,10 +359,12 @@ ss_save_fconfigs()
     fprintf(file_w, "%s:\n", ss_tag_yaml_to_string(SS_TAG_YAML_READ_STATE));
     write_elements_can(file_w, SS_READ_STATE, &global_configs.power[SS_READ_STATE]);
 
+    fflush(file_w);
+
     fprintf(file_w, "%s:\n", ss_tag_yaml_to_string(SS_TAG_YAML_SENSORS));
-    for (short i = 1; i < global_configs.sensors.size; i++)
+    for (short i = 1; i < global_configs.sensors.size + 1; i++)
     {
-        fprintf(file_w, "\tsensor%d:\n", i);
+        fprintf(file_w, "  sensor%d:\n", i);
         write_elements_ips(file_w, &global_configs.sensors.ips[i-1]);   
     }
     
@@ -378,13 +459,13 @@ read_data_ips(ss_sensor_t *dst,  yaml_event_t *event, yaml_parser_t *parser)
                 if (event->type == YAML_SCALAR_EVENT)
                 {
                     value = (char *) event->data.scalar.value;
-                    if (strcmp(value, ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_CAN_TO_USE)) == 0)
+                    if (strcmp(value, ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_IP_TO_USE)) == 0)
                     {
                         yaml_event_delete(event), yaml_parser_parse(parser, event);
 
                         int dst_to_use;
                         ss_convert_str_to_num(&dst_to_use, (const char *) event->data.scalar.value, INT);
-                        dst->to_use = dst_to_use ? true : false;
+                        dst[index-1].to_use = (dst_to_use ? true : false);
                         ntoken++;
                     }
                     else if (strcmp(value, ss_subtag_yaml_to_string(tag, SS_SUBTAG_YAML_IP_ID)) == 0)
@@ -416,7 +497,7 @@ read_data_ips(ss_sensor_t *dst,  yaml_event_t *event, yaml_parser_t *parser)
             }
         }
 
-        if (event->type == YAML_MAPPING_END_EVENT)
+        if (event->type == YAML_STREAM_END_EVENT)
         {
             break;
         }

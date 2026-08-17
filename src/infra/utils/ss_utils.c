@@ -114,7 +114,7 @@ ss_convert_str_to_num(void *ptr, const char *num_str, ss_convert_type_t type)
     if ( !num_str || *num_str == '\0' )
     {
         ss_publish_error(SS_ERROR_WARNING, "null pointer");
-        return -2; //empty string
+        return -3; //empty string
     }
     
     switch (type)

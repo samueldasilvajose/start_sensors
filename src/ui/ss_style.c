@@ -18,8 +18,16 @@ set_image_scaled(SsWallpaperContext *ctx)
     }
     else
     {
-        ss_send_notify(SS_ERROR_ERROR, "não foi possivel alterar o wallpaper");
+        ss_send_notify_parse(SS_ERROR_ERROR, "não foi possivel alterar o wallpaper");
     }
+}
+
+
+void
+ss_setup_form_label(GtkWidget *label)
+{
+    gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+    gtk_widget_set_margin_start(label, 10);
 }
 
 
@@ -55,8 +63,10 @@ ss_init_style()
         ".%s { color: #cc0000; } ",
         ".%s { color: black; } ",
         ".%s { color: #00aa00; } ",
+        ".%s { color: #ffffff; } ",
         ".%s { background-color: #cccccc; } ",
         ".%s { background-color: white; }",
+        ".%s { border: 1px solid #707070; }",
     };
 
     gint len_buf = 0;

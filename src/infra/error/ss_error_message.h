@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "ss_error.h"
 
-#define ERRNO_MSG_MAX 512
 
 typedef uint8_t ss_error_mask_t;
 typedef void (*ss_error_handler_t)(SsErrorLevel level, const char *message);

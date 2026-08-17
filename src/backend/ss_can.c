@@ -6,6 +6,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #ifndef __USE_MISC
 #define __USE_MISC
 #include <net/if.h>
@@ -67,22 +70,78 @@ ss_recv_frame(int sockfd, struct can_frame *frame)
 		if (ret < 0)
 		{
 			if (ss_error_get_err_level(SS_ERROR_WARNING, level_to_notify) > 0)
-			{
 				ss_publish_error(SS_ERROR_WARNING, "Recv failed (%s)", strerror(errno));
-			}
 		}
 		else
 		{
 			if (ss_error_get_err_level(SS_ERROR_WARNING, level_to_notify) > 0)
-			{
 				ss_publish_error(SS_ERROR_WARNING, "Recv returned %d (%s)", ret, strerror(errno));
-			}
 		}
 
 		return 1;
 	}
 
 	return 0;
+}
+
+
+int
+ss_recv_last_frame(int sockfd, struct can_frame *frame)
+{
+    int received = 1;
+
+	while (1)
+    {
+        int nbytes = recv(sockfd, frame, sizeof(*frame), 0);
+        if (nbytes > 0)
+        {
+            received = 0;
+            continue;
+		}
+
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+		{
+			ss_publish_error(SS_ERROR_WARNING, "Recv failed (%s)", strerror(errno));
+			return 1;
+		}
+
+		break;
+    }
+
+	return received;
+}
+
+
+int
+ss_recv_frame_filter_msg(int sockfd, canid_t can_id, struct can_frame *frame)
+{
+    int received = 1;
+	struct can_frame current_frame = {0};
+
+	while (1)
+    {
+        int nbytes = recv(sockfd, &current_frame, sizeof(current_frame), 0);
+        if (nbytes > 0)
+        {
+			if (current_frame.can_id == can_id)
+			{
+				*frame = current_frame;
+				received = 0;
+			}
+			
+            continue;
+		}
+
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+		{
+			ss_publish_error(SS_ERROR_WARNING, "Recv failed (%s)", strerror(errno));
+			return 1;
+		}
+
+		break;
+    }
+
+	return received;
 }
 
 
@@ -145,6 +204,9 @@ ss_connect_can(char *intf_name)
 
 	strcpy(ifr.ifr_name, intf_name);
 	ioctl(sockfd, SIOCGIFINDEX, &ifr);
+
+	int flags = fcntl(sockfd, F_GETFL, 0);
+	fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 
 	addr.can_family = family;
 	addr.can_ifindex = ifr.ifr_ifindex;

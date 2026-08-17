@@ -4,13 +4,13 @@
 
 static atomic_int ss_errno = 0;
 
-inline SsErrorLevel
+SsErrorLevel
 ss_get_error()
 {
     return atomic_load(&ss_errno);
 }
 
-inline SsErrorLevel
+SsErrorLevel
 ss_set_error(SsErrorLevel err)
 {
     if ((unsigned) err >= SS_ERROR_COUNT)

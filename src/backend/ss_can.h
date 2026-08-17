@@ -9,6 +9,8 @@ void ss_get_frames_string(struct can_frame *frame);
 int ss_send_frame(int sockfd, struct can_frame *frame);
 int ss_recv_frame(int sockfd, struct can_frame *frame);
 int ss_connect_can(char *intf_name);
+int ss_recv_last_frame(int sockfd, struct can_frame *frame);
+int ss_recv_frame_filter_msg(int sockfd, canid_t can_id, struct can_frame *frame);
 
 ss_error_mask_t ss_set_can_level_to_notify(ss_error_mask_t level);
 

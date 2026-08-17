@@ -63,9 +63,9 @@ main(int argc, char **argv)
     ss_init_can();
 
     if (ss_start(argc, argv))
-    {
         ss_fatal_errno("Check os erros ocorridos no arquivo %s.", ss_get_log_file(NULL));
-    }
+
+    ss_save_fconfigs();
     
     return 0;
 }
